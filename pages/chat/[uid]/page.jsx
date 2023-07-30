@@ -1,5 +1,5 @@
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
-import { Container, FormControl, Switch, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, useToast } from '@chakra-ui/react';
+import { Container, FormControl, FormLabel, Switch, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, Text, useToast } from '@chakra-ui/react';
 import {
     MainContainer,
     ChatContainer,
@@ -9,44 +9,56 @@ import {
 } from '@chatscope/chat-ui-kit-react';
 import React, { useState, useEffect } from 'react';
 import supabase from '../../../utils/supabase.js';
+import { useParams } from 'next/navigation';
 
-export default function Chat(){
+export default function ChatPage({ uid }){
 
     const toast = useToast();
+    const params = useParams();
 
     const [message, setMessage] = useState("");
-    const [chatHistory, setChatHistory] = useState({});
+    const [chatHistory, setChatHistory] = useState([]);
     const [ownsModel, setOwnsModel] = useState(false);
     const [canAccessModel, setCanAccessModel] = useState(false);
 
-    useEffect(async () => {
-        const params = useParams();
-    
-        if(supabase.auth.currentUser?.id == params.uid){
+    useEffect(() => {
+        checkUsability();
+    }, []);
+
+    let checkUsability = async () => {    
+        
+        if(params && supabase.auth.currentUser?.id == params.uid){
             setOwnsModel(true);
         }
 
-        const {data, error} = supabase
-                        .from('chatbots')
-                        .eq('uid', params.id)
-                        .eq('public_access', true)
-                        .select();
-        if(data.length > 0 || supabase.auth.currentUser?.id == params.uid){
-            setCanAccessModel(true);
+        let useId;
+
+        if(!params){
+            let user = await supabase.auth.getUser();
+            useId = user["data"]["user"]["id"];
+        } else {
+            useId = params.uid;
         }
 
-    }, []);
+        const {data, error} = await supabase
+                        .from('chatbots')
+                        .select()
+                        .eq('uid', useId)
+                        .eq('public_access', true);
+        if(data.length > 0 || !params || supabase.auth.currentUser?.id == params.uid){
+            setCanAccessModel(true);
+        }
+    }
 
 
     let sendMessage = async () => {
         let token = await supabase.auth.getSession().access_token;
-        
+        setMessage("");
         let res = await fetch('/api/chat', {
             method: "POST",
             body: JSON.stringify({
                 jwt: token,
-                message: message,
-                chatHistory: JSON.stringify(chatHistory)
+                chatHistory: JSON.stringify([...chatHistory, {sender: 'user', message: message}])
             }),
             headers: new Headers({
                 'Content-Type': 'application/json',
@@ -109,9 +121,11 @@ export default function Chat(){
                 <FormLabel htmlFor='model-public' mb='0'>
                     Enable external visibility
                 </FormLabel>
-                <Switch id='model-public' onChange={(e) => changeAccess(e.target.value)}/>
+                <Switch disabled={!ownsModel} id='model-public' onChange={(e) => changeAccess(e.target.value)}/>
+            </FormControl>
 
-                <MainContainer>
+            
+            <MainContainer>
                     <ChatContainer>
                         <MessageList>
                            {chatHistory.map((item, index) => (
@@ -119,12 +133,13 @@ export default function Chat(){
                            ))}
                             <MessageInput placeholder="Type message here" 
                             value={message}
+                            attachButton={false}
                             onChange={(innerHtml, textContent, innerText, nodes) => setMessage(textContent)}
                             onSend={(innerHtml, textContent, innerText, nodes) => {sendMessage()}}/>
                         </MessageList>
                     </ChatContainer>
                 </MainContainer>
-            </FormControl>
         </Container>
+
     )
 }

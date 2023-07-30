@@ -1,11 +1,14 @@
-import { Container, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, useToast } from '@chakra-ui/react';
+import styles from '@/styles/Home.module.css'
+import { Inter } from 'next/font/google'
+import { Container, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, useToast, Text } from '@chakra-ui/react';
 import React, { useState, useEffect } from 'react';
 import supabase from './../utils/supabase.js';
 
+const inter = Inter({ subsets: ['latin'] })
 
 export default function Models() {
 
-    const [newSources, setNewSource] = useState({});
+    const [newSource, setNewSource] = useState({});
     const [sources, setSources] = useState([]);
 
     const toast = useToast();
@@ -15,15 +18,32 @@ export default function Models() {
     }, []);
 
     let getDataSources = async () => {
-        const {data, error} = await supabase
+        let {data, error} = await supabase
             .from('sources')
-            .eq('user', supabase.auth.currentUser?.id)
-            .select();
+            .select()
+            .eq('user', supabase.auth.currentUser?.id);
+        if(data == null){
+            data = [];
+        }
         setSources(data);
     }
 
-    let addDataSource = async () => {
-    
+    let addDataSource = async (type) => {
+
+        let session = await supabase.auth.getSession();
+        let user = await supabase.auth.getUser();
+
+        const data = await fetch("http://localhost:8080/add_data", {
+            method: 'POST',
+            body: JSON.stringify({
+                jwt: session.access_token,
+                data: newSource,
+                type: type,
+                uid: user.data.user.id
+            })
+        });
+
+        console.log(data);
     }
 
     let deleteDataSource = async (id) => {
@@ -42,12 +62,12 @@ export default function Models() {
     }
 
     return (
-        <Container>
+        <Container className={`${styles.main} ${inter.className} ${styles.description}`}>
             {/* Allow users to create new model */}
 
-            <Heading>
+            <Text fontSize={'lg'} padding={2}>
                 Add data sources to your chatbot.
-            </Heading>
+            </Text>
 
             <Tabs>
                 <TabList>
@@ -74,9 +94,9 @@ export default function Models() {
             </Tabs>
             <Button onClick={() => addDataSource()}>Add</Button>
 
-            <Heading>
+            <Text fontSize={'lg'} padding={2}>
                 Manage existing data sources.
-            </Heading>
+            </Text>
 
             <Box>
                 {sources.map((item, index) => <Box>

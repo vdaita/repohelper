@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 import tempfile
 import os
-from langchain.document import Document
+from langchain.docstore.document import Document
 from langchain.document_loaders import GitLoader, UnstructuredURLLoader
 from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -18,20 +18,44 @@ class RequestItem(BaseModel):
     uid: str
     data: str
     type: str
+    jwt: str
+
+origins = [
+    "http://repohelper.longlaketech.com",
+    "https://repohelper.longlaketech.com",
+    "http://localhost",
+    "http://localhost:8080"
+]
 
 app = FastAPI()
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_SUDO_KEY")
 
-supabase: Client = create_client(url, key)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+
+
 stackoverflow_site = StackAPI('stackoverflow') # should I allow users to add all information from this
 
 @app.post("/add_data/")
 async def add_data(item: RequestItem):
     # Load data using various methods
 
+    supabase: Client = create_client(url, key, {
+        'headers': {
+            'apiKey': key,
+            'Authorization': 'Bearer ' + item.jwt
+        }
+    })
+
     embeddings_model = HuggingFaceHubEmbeddings(repo_id="bigcode/starcoder", 
-                                                huggingfacehub_api_token=os.environ.get("HUGGING_FACE_EMBEDDINGS"))
+                                                huggingfacehub_api_token=os.environ.get("HF_API_KEY"))
     sources_table_data = supabase.table("sources").insert({
         "uid": item.uid,
         "data": item.data,
@@ -101,3 +125,5 @@ async def add_data(item: RequestItem):
 
     supabase.table("documents").insert(data)
     updates_source_table_data = supabase.table("sources").insert({"completed": True})
+
+    return {"message": "success"}

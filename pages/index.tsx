@@ -2,19 +2,22 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
-import { Box, Container, Input, Button } from '@chakra-ui/react';
+import { Box, Container, Input, Button, Text, VStack } from '@chakra-ui/react';
 import supabase from '../utils/supabase';
 import { useRouter } from 'next/navigation';
-import React, {useEffect, } from 'react';
+import React, {useEffect, useState} from 'react';
+import ChatPage from './chat/[uid]/page';
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
 
   const { push } = useRouter();
+  const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
     // console.log(supabase.auth.getUser());
+    loadInformation();
     supabase.auth.onAuthStateChange((event, session) => {
       if(!session?.user){
         push("/auth")
@@ -22,7 +25,9 @@ export default function Home() {
     });
   }, []);
 
-
+  let loadInformation = async() => {
+    setUserInfo(await supabase.auth.getUser());
+  }
   
   return (
     <>
@@ -34,7 +39,13 @@ export default function Home() {
       </Head>
       <main className={`${styles.main} ${inter.className}`}>
         <div className={styles.description}>
+          <VStack>
+            <Text>{userInfo ? userInfo["data"]["user"]["email"] : ""}</Text>
+            <Button onClick={() => push("/model")}>Manage your model</Button>
+            <Button onClick={() => supabase.auth.signOut()}>Sign out</Button>
+          </VStack>
 
+          <ChatPage/>
         </div>
       </main>
     </>
