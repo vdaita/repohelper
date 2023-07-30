@@ -1,16 +1,22 @@
+# probably should rewrite this using Next.js
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 import tempfile
 import os
+from langchain.document import Document
 from langchain.document_loaders import GitLoader, UnstructuredURLLoader
 from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from stackapi import StackAPI
+
 import json
 
 class RequestItem(BaseModel):
     uid: str
-    data: str,
+    data: str
     type: str
 
 app = FastAPI()
@@ -18,6 +24,7 @@ url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_SUDO_KEY")
 
 supabase: Client = create_client(url, key)
+stackoverflow_site = StackAPI('stackoverflow') # should I allow users to add all information from this
 
 @app.post("/add_data/")
 async def add_data(item: RequestItem):
@@ -25,11 +32,20 @@ async def add_data(item: RequestItem):
 
     embeddings_model = HuggingFaceHubEmbeddings(repo_id="bigcode/starcoder", 
                                                 huggingfacehub_api_token=os.environ.get("HUGGING_FACE_EMBEDDINGS"))
+    sources_table_data = supabase.table("sources").insert({
+        "uid": item.uid,
+        "data": item.data,
+        "type": item.type,
+        "completed": False 
+    }).execute();
+
+    # add further integrations (documentation - GitBook/ReadTheDocs/Apify, custom integrations - getting most liked StackOverflow questions)
+
+    data = []
 
     if item.type == "github":
-
         tmp_dir = tempfile.TemporaryDirectory()
-        req_data = json.parse(item.data)
+        req_data = json.loads(item.data)
 
         loader = GitLoader(
             clone_url=req_data.url,
@@ -39,17 +55,7 @@ async def add_data(item: RequestItem):
 
         documents = loader.load()    
         embeddings = embeddings_model.embed_documents(documents)
-
-        # generate source in supabase
-        sources_table_data = supabase.table("sources").insert({
-            "uid": item.uid,
-            "data": item.data,
-            "type": item.type,
-            "completed": False 
-        }).execute();
-
         
-        data = []
         for (index, document) in enumerate(documents):
             data.append({ "embeddings": embeddings[index],
                           "uid": item.uid,  
@@ -58,21 +64,40 @@ async def add_data(item: RequestItem):
                         "snippet": ""
             })
 
-        supabase.table("document_embeddings").insert(data)
-
-        updates_source_table_data = supabase.table("sources").insert({"completed": True})
-
         tmp_dir.cleanup()
-    elif item.type == "stackoverflow":
-        
     elif item.type == "url":
-        req_data = json.parse(item.data)
+        req_data = json.loads(item.data)
         loader = UnstructuredURLLoader(urls=[req_data['url']])
-        data = loader.load()
-        # split the document into several pieces
+        documents = loader.load()
+        # split the document into several pieces 
         text_splitter = RecursiveCharacterTextSplitter()
-        split_data = text_splitter.create_documents([data])
+        split_documents = text_splitter.create_documents([documents])
 
-        
+        embeddings = embeddings_model.embed_documents(split_documents)
 
+        for (index, document) in enumerate(split_documents):
+            data.append({ "embeddings": embeddings,
+                        "uid": item.uid,
+                        "source_id": sources_table_data.data.id,
+                        "url": req_data["url"],
+                        "snippet": document.page_content
+                        })
+            
     elif item.type == "text":
+        req_data = json.loads(item.data)
+        document = Document({'page_content': req_data['text']})
+        text_splitter = RecursiveCharacterTextSplitter()
+        split_documents = text_splitter.create_documents([document])
+        embeddings = embeddings_model.embed_documents(split_documents)
+
+        for (index, document) in enumerate(split_documents):
+            data.append({
+                "embeddings": embeddings,
+                "uid": item.uid,
+                "source_id": sources_table_data.data.id,
+                "url": req_data["url"],
+                "snippet": document.page_content
+            })
+
+    supabase.table("documents").insert(data)
+    updates_source_table_data = supabase.table("sources").insert({"completed": True})

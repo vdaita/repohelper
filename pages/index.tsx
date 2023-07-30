@@ -2,10 +2,28 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
+import { Box, Container, Input, Button } from '@chakra-ui/react';
+import supabase from '../utils/supabase';
+import { useRouter } from 'next/navigation';
+import React, {useEffect, } from 'react';
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+
+  const { push } = useRouter();
+
+  useEffect(() => {
+    // console.log(supabase.auth.getUser());
+    supabase.auth.onAuthStateChange((event, session) => {
+      if(!session?.user){
+        push("/auth")
+      }
+    });
+  }, []);
+
+
+  
   return (
     <>
       <Head>

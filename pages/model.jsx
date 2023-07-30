@@ -1,12 +1,14 @@
-import { Container, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea } from '@chakra-ui/react';
+import { Container, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, useToast } from '@chakra-ui/react';
 import React, { useState, useEffect } from 'react';
-import supabase from '../utils/supabase.js';
+import supabase from './../utils/supabase.js';
 
 
 export default function Models() {
 
     const [newSources, setNewSource] = useState({});
     const [sources, setSources] = useState([]);
+
+    const toast = useToast();
 
     useEffect(() => {
         getDataSources();
@@ -20,12 +22,23 @@ export default function Models() {
         setSources(data);
     }
 
-    let addDataSource = () => {
-
+    let addDataSource = async () => {
+    
     }
 
-    let deleteDataSource = (id) => {
-
+    let deleteDataSource = async (id) => {
+        const {error} = await supabase
+            .from('sources')
+            .delete()
+            .eq('user', supabase.auth.currentUser?.id)
+            .eq('id', id);
+        if(error){
+            toast({
+                title: `Error deleting source ${id}`,
+                isClosable: true,
+                status: 'error'
+            });
+        }
     }
 
     return (
