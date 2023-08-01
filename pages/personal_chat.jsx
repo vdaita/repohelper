@@ -4,7 +4,7 @@ import { Container, FormControl, FormLabel, Switch, Box, Input, Button,
     TabPanel, Textarea, Text, 
     useToast, useColorMode, Spinner } from '@chakra-ui/react';
 import React, { useState, useEffect, useRef } from 'react';
-import supabase from '../../../utils/supabase.js';
+import supabase from './../utils/supabase.js';
 import { useParams } from 'next/navigation';
 import { AiOutlineSend } from 'react-icons/ai';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
@@ -13,7 +13,7 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import {dark, light} from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useChat } from 'ai/react';
 
-export default function ChatPage(){
+export default function PersonalChatPage(){
 
     const {colorMode, toggleColorMode} = useColorMode();
 
@@ -92,7 +92,7 @@ export default function ChatPage(){
         try {
             let localMessages = [...messages];
             let shortenedHistory = messages.splice(Math.max(messages.length - 2, 0), messages.length);
-            let formattedMessage = {"sender": 'user', "message": newMessage};
+            let formattedMessage = {"role": 'user', "content": newMessage};
     
             setNewMessage("");
             setLoading(true);
@@ -104,11 +104,12 @@ export default function ChatPage(){
             console.log("Body: ", body);
 
             setMessages([...localMessages, formattedMessage]);
+            localMessages = [...localMessages, formattedMessage];
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort, 10000);
     
-            let res = await fetch("/api/chat", {
+            let res = await fetch("/api/personal_chat", {
                 method: 'POST',
                 signal: controller.signal,
                 body: JSON.stringify({
@@ -138,11 +139,10 @@ export default function ChatPage(){
                 done = doneReading;
                 const chunkValue = decoder.decode(value);
                 console.log("Adding chunk ", chunkValue);
-                localMessages = [...messages];
-                if(localMessages.at(-1).sender == 'user'){
-                    localMessages.push({sender: 'ai', message: ''});
+                if(localMessages.at(-1)['role'] == 'user'){
+                    localMessages.push({'role': 'ai', 'content': ''});
                 }
-                localMessages.at(-1).message = localMessages.at(-1).message + chunkValue;
+                localMessages.at(-1)['content'] = localMessages.at(-1)['content'] + chunkValue;
                 setMessages(localMessages);
                 // setResult((result) => result + chunkValue);
             }

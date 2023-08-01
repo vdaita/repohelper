@@ -6,7 +6,7 @@ import { Box, Container, Input, Button, Text, VStack, useColorMode } from '@chak
 import supabase from '../utils/supabase';
 import { useRouter } from 'next/navigation';
 import React, {useEffect, useState} from 'react';
-import ChatPage from './chat/[uid]/page';
+import PersonalChatPage from './personal_chat';
 import AuthPage from './auth';
 
 const inter = Inter({ subsets: ['latin'] })
@@ -52,7 +52,7 @@ export default function Home() {
             <Button onClick={() => supabase.auth.signOut()}>Sign out</Button>
           </VStack>
 
-          <ChatPage/>
+          <PersonalChatPage/>
         </div>
       </main>
     </>

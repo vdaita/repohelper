@@ -10,6 +10,12 @@ import { AIMessage, HumanMessage, SystemMessage } from 'langchain/schema';
 import { Configuration, OpenAIApi } from 'openai-edge';
 import { OpenAIStream, StreamingTextResponse } from 'ai';
 
+const config = new Configuration({
+    apiKey: process.env.OPENAI_API_KEY
+});
+const openai = new OpenAIApi(config);
+
+
 async function LangchainStream(chain, message) {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
@@ -105,14 +111,60 @@ export default async function handler(req){
 
         // console.log("embeddings, vectorStore, model, chain, all loaded, with messages: ", formattedMessages);
     
-        console.log("loaded info")
+        // console.log("loaded info")
 
-        let initialMessage = new SystemMessage(`You are a helpful programming assistant that looks through documentation to answer questions. 
-        Respond in Markdown to each question with code snippets included if needed.`);
+        let initialMessage = `You are a helpful programming assistant that looks through documentation to answer questions. 
+        Respond in Markdown to each question with code snippets included if needed.`;
 
-        queryText = queryText.reoplace
+        let previousMessages = [...messages];
+        previousMessages.pop();
 
-        let embeddedQuestion = embeddings.embedQuery("");
+        // let previousMessagesString = "";
+        // for(var i = 0; i < previousMessages.length; i++){
+        //     previousMessagesString += previousMessages[i]["sender"] + ": " + previousMessages[i]["message"]; 
+        // }
+
+        let finalQuestion = messages.at(-1)['content'];
+        finalQuestion = finalQuestion.replaceAll("\n", " ")
+        let embeddedQuestion = await embeddings.embedQuery(finalQuestion);
+
+        console.log("Embedded question: ", embeddedQuestion);
+
+        let { data: matches, error: matchError } = supabase.rpc('match_documents_personal', {
+            embeddedQuestion,
+            match_count: 3,
+            match_threshold: 0.78
+        })
+
+        console.log("Matching documents: ", matches, matchError);
+
+        if(!matches){
+            matches = [];
+        }
+
+        if(matchError){
+            console.log("match error: ", matchError);
+            return new Response({error: matchError.toString()});
+        }
+
+        let context = "";
+        for(var matchIndex = 0; matchIndex < matches.length; matchIndex++){
+            context += matches[matchIndex]["content"] + "\n";
+        }
+
+        let requestMessages = [{role: 'system', message: initialMessage}, {role: 'system', message: `Context: ${context}`}, ]
+
+        // let completeMessage = `${initialMessage} \n Context: ${context} \n Previous messages: ${previousMessagesString} \n Current question: ${finalQuestion}`;
+
+        console.log("Created complete message");
+
+        const response = await openai.createChatCompletion({
+            model: "gpt-3.5-turbo",
+            stream: true,
+            messages:
+        });
+
+        const stream = OpenAIStream(response);
 
         // let stream = LangchainStream(chain, queryText);
     
