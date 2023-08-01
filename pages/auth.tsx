@@ -22,6 +22,7 @@ export default function AuthPage(){
         <Container>
             <Auth 
                 supabaseClient={supabase}
+                providers={[]}
                 appearance={{theme: ThemeSupa}}/>
         </Container>
     )
