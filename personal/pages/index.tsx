@@ -47,7 +47,7 @@ export default function Home() {
 
           <VStack>
             <Text>{user.data ? user["data"]["user"]["email"] : ""}</Text>
-            <Button onClick={() => push("/model")}>Manage your model</Button>
+            <Button onClick={() => push("/manage_model")}>Manage your model</Button>
             <Button onClick={toggleColorMode}>Toggle {colorMode == 'light' ? 'Dark' : 'Light'} </Button>
             <Button onClick={() => supabase.auth.signOut()}>Sign out</Button>
           </VStack>

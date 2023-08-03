@@ -2,7 +2,7 @@ import styles from '@/styles/Home.module.css'
 import { Inter } from 'next/font/google'
 import { Container, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, useToast, Text } from '@chakra-ui/react';
 import React, { useState, useEffect } from 'react';
-import supabase from './../utils/supabase.js';
+import supabase from '../utils/supabase.js';
 import { useRouter } from 'next/navigation';
 
 const inter = Inter({ subsets: ['latin'] })
@@ -32,6 +32,15 @@ export default function Models() {
             .from('sources')
             .select()
             .eq('user', supabase.auth.currentUser?.id);
+
+        if(error){
+            console.error("Error fetching data sources: ", error);
+            toast({
+                title: 'Error fetching data',
+                status: 'error'
+            })
+        }
+
         if(data == null){
             data = [];
         }
@@ -53,6 +62,17 @@ export default function Models() {
             })
         });
 
+        if(data.status == 200){
+            toast({
+                title: 'Request successfully received - refresh sources in a few minutes.',
+                status: 'success'
+            })
+        } else {
+            toast({
+                title: 'Request failed',
+                status: 'error'
+            })
+        }
         console.log(data);
     }
 

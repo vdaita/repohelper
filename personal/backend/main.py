@@ -21,6 +21,8 @@ from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.vectorstores import SupabaseVectorStore
 
+from dbload import load
+
 from typing import AsyncIterable, Awaitable
 import asyncio
 import json
@@ -127,98 +129,6 @@ def chat(body: ChatRequest):
 
 @app.post("/add_data/")
 async def add_data(item: AddModelRequestItem):
-    # Load data using various methods
-
-    supabase: Client = create_client(url, key, {
-        'headers': {
-            'apiKey': key,
-            'Authorization': 'Bearer ' + item.jwt
-        }
-    })
-
-    embeddings_model = HuggingFaceHubEmbeddings(repo_id="replit/replit-code-v1-3b", 
-                                                huggingfacehub_api_token=os.environ.get("HF_API_KEY"))
-    sources_table_data = supabase.table("sources").insert({
-        "uid": item.uid,
-        "data": item.data,
-        "request_type": item.request_type,
-        "completed": False 
-    }).execute();
-
-    req_data = json.loads(item.data)
-
-    # add further integrations (documentation - GitBook/ReadTheDocs/Apify, custom integrations - getting most liked StackOverflow questions)
-
-    data = []
-
-    if item.request_type == "git":
-        tmp_dir = tempfile.mkdtemp()
-        loader = GitLoader(
-            clone_url=req_data.url,
-            repo_path = tmp_dir,
-            branch=req_data.branch
-        )
-
-        documents = loader.load()    
-        embeddings = embeddings_model.embed_documents(documents)
-        
-        for (index, document) in enumerate(documents):
-            data.append({ "embeddings": embeddings[index],
-                          "uid": item.uid,  
-                          "source_id": sources_table_data.data.id, 
-                          "url": req_data.url + "/tree/" + req_data.branch + "/" + document.metadata['file_path'],
-                        "snippet": ""
-            })
-
-        shutil.rmtree(tmp_dir)
-
-    elif item.request_type == "rtdocs":
-        tmp_dir = tempfile.mkdtemp()
-        os.system("wget -r -A.html -P " + tmp_dir + " " + req_data['url'])
-        loader = ReadTheDocsLoader(tmp_dir, features="html.parser")
-
-        documents = loader.load()
-        embeddings = embeddings_model.embed_documents(documents)
-
-        for (index, documents) in enumerate(documents):
-            # figure out the outputs on this one
-            data.append({
-
-            })
-        
-    elif item.request_type == "url":
-        loader = UnstructuredURLLoader(urls=[req_data['url']])
-        documents = loader.load()
-        # split the document into several pieces 
-        text_splitter = RecursiveCharacterTextSplitter()
-        split_documents = text_splitter.create_documents([documents])
-
-        embeddings = embeddings_model.embed_documents(split_documents)
-
-        for (index, document) in enumerate(split_documents):
-            data.append({ "embeddings": embeddings,
-                        "uid": item.uid,
-                        "source_id": sources_table_data.data.id,
-                        "url": req_data["url"],
-                        "snippet": document.page_content
-                        })
-            
-    elif item.request_type == "text":
-        document = Document({'page_content': req_data['text']})
-        text_splitter = RecursiveCharacterTextSplitter()
-        split_documents = text_splitter.create_documents([document])
-        embeddings = embeddings_model.embed_documents(split_documents)
-
-        for (index, document) in enumerate(split_documents):
-            data.append({
-                "embeddings": embeddings,
-                "uid": item.uid,
-                "source_id": sources_table_data.data.id,
-                "url": req_data["url"],
-                "snippet": document.page_content
-            })
-
-    supabase.table("documents").insert(data)
-    updates_source_table_data = supabase.table("sources").insert({"completed": True})
-
+    data_parsed = json.loads(item)
+    load(data_parsed["url"], item.uid, item.request_type)
     return {"message": "success"}
