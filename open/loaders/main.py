@@ -21,6 +21,7 @@ load_dotenv()
 
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
+access_token = os.environ.get("GH_ACCESS_TOKEN")
 
 supabase = create_client(supabase_url, supabase_key)
 # embeddings_model = HuggingFaceHubEmbeddings()
@@ -29,6 +30,30 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=3000, chunk_overlap=50
 stackoverflow_filter = "!-MBrU_IzpJ5H-AG6Bbzy.X-BYQe(2v-.J"
 stackoverflow_site = StackAPI('stackoverflow')
 
+app = typer.Typer()
+
+@app.command()
+def load_ghissues(issues_repo, store_repo):
+    print("Running GitHub Issues loader: ", issues_repo + " for  " + store_repo)
+    loader = GitHubIssuesLoader(repo=issues_repo, access_token=access_token, include_prs=False)
+    documents = loader.load_and_split(text_splitter)
+    for i in range(0, len(documents)):
+        documents[i]["source"] = documents[i]["url"]
+    
+    embeddings = embeddings_model.embed_documents(documents)
+
+    data = []
+    for document in documents:
+        data.append({
+            "embeddings": embeddings,
+            "metadata": document.metadata,
+            "content": document.pageContent,
+            "repo": store_repo
+        })
+
+    supabase.table("documents").insert(data)
+
+@app.command()
 def load_stackoverflow(tag, repo, page=1, num_posts=200):
     print("Running StackOverflow loader: ", tag, num_posts, repo)
     questions = stackoverflow_site.fetch('questions', page=page, pagesize=num_posts, min=15, sort="votes", tagged=tag, filter=stackoverflow_filter)
@@ -69,7 +94,7 @@ def load_stackoverflow(tag, repo, page=1, num_posts=200):
 
 
 
-
+@app.command()
 def load(url, repo, loadtype):
     print("Running loader: ", url, repo, loadtype)
 
@@ -136,4 +161,4 @@ def load(url, repo, loadtype):
     #                     })
 
 if __name__ == "__main__":
-    typer.run(load)
+    app()

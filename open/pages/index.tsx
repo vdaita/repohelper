@@ -2,6 +2,8 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
+import Link from 'next/link'
+import { Button, Card, Flex, TextInput } from "@mantine/core";
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,41 +19,36 @@ export default function Home() {
       <main className={`${styles.main} ${inter.className}`}>
         <div className={styles.description}>
           <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>pages/index.tsx</code>
+            Chat with our existing repositories 
           </p>
           <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
+              <Link href="/chat/mantine" style={{textDecorationLine: 'underline'}}>
+                Mantine
+              </Link>
           </div>
         </div>
 
         <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
+          <h1><b>Coming soon</b> Superdocs Personal</h1> <br/>
+          <Flex style={{flexDirection: 'row'}}>
+            <TextInput size="lg" m='md' placeholder="Your email" ></TextInput>
+            <Button size="lg" m='md'>Join the waitlist</Button>
+          </Flex>
         </div>
 
         <div className={styles.grid}>
-          <p><b>Coming soon</b> Superdocs Personal: add as many projects to one chatbot, use OpenAI, faster inference</p>
+          <Card className={styles.card} shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
+            OpenAI Integration
+          </Card>
+          <Card className={styles.card}  shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
+            Multiple data sources
+          </Card>
+          <Card className={styles.card}  shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
+            Search engine integration
+          </Card>
+          <Card className={styles.card}  shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
+            Faster results
+          </Card>
         </div>
       </main>
     </>
