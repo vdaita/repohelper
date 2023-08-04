@@ -12,6 +12,7 @@ export async function POST(req: Request) {
  
   const { stream, handlers } = LangChainStream()
 
+  let supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
  
   const llm = new ChatOpenAI({
     streaming: true
