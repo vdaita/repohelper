@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from langchain.docstore.document import Document
 from langchain.document_loaders import GitLoader, GitHubIssuesLoader, ReadTheDocsLoader, UnstructuredURLLoader, GitbookLoader
+from langchain.document_loaders.recursive_url_loader import RecursiveUrlLoader
 from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from stackapi import StackAPI
@@ -21,11 +22,13 @@ load_dotenv()
 
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
-access_token = os.environ.get("GH_ACCESS_TOKEN")
+gh_access_token = os.environ.get("GH_ACCESS_TOKEN")
+hf_api_token = os.environ.get("HF_API_TOKEN")
 
 supabase = create_client(supabase_url, supabase_key)
 # embeddings_model = HuggingFaceHubEmbeddings()
-embeddings_model = OpenAIEmbeddings()
+embeddings_repo_id = "sentence-transformers/all-MiniLM-L6-v2"
+embeddings_model = HuggingFaceHubEmbeddings(repo_id=embeddings_repo_id, huggingface_api_token=)
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=3000, chunk_overlap=500)
 stackoverflow_filter = "!-MBrU_IzpJ5H-AG6Bbzy.X-BYQe(2v-.J"
 stackoverflow_site = StackAPI('stackoverflow')
@@ -110,9 +113,7 @@ def load(url, repo, loadtype):
             branch="master"
         )
 
-        documents = loader.load_and_split(text_splitter)    
-        embeddings = embeddings_model.embed_documents(documents)
-        
+        documents = loader.load_and_split(text_splitter)            
         
         for (index, document) in enumerate(documents):
             document_url = f"{url}/tree/master/{document.metadata['file_path']}"
@@ -126,12 +127,16 @@ def load(url, repo, loadtype):
         loader = ReadTheDocsLoader(tmp_dir, features="html.parser")
 
         documents = loader.load_and_split(text_splitter)
-        embeddings = embeddings_model.embed_documents(documents)
 
     elif loadtype == "gitbook":
         loader = GitbookLoader(url, load_all_paths=True)
         documents = loader.load_and_split(text_splitter)
-        embeddings = embeddings_model.embed_documents(documents)
+
+    elif loadtype == "recurl":
+        loader = RecursiveUrlLoader(url=url)
+        documents = loader.load_and_split(text_splitter)
+    
+    embeddings = embeddings_model.embed_documents(documents)
 
     for (index, document) in enumerate(documents):
         data.append({
