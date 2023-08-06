@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, TextInput, Button, Card, Alert, Flex, Textarea, Box } from '@mantine/core';
+import { Container, TextInput, Button, Loader, Card, Alert, Flex, Textarea, Box } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useChat } from "ai/react";
 
@@ -11,18 +11,59 @@ export default function RepoChat(){
 
     const [error, setError] = useState(false);
 
-    const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-        onError: (err) => {
-            setError(err);
-        },
-        body: {
-            repo: router.query.slug
-        }
-    });
+    const [messages, setMessages] = useState([]);
+
+    const [input, setInput] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    // const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    //     onError: (err) => {
+    //         setError(err);
+    //     },
+    //     body: {
+    //         repo: router.query.slug
+    //     }
+    // });
 
     useEffect(() => {
         messagesFooter.current.scrollIntoView();
     }, [messages])
+
+    let handleInputChange = (e) => {
+        setInput(e.target.value);
+    }
+
+    let sendMessage = async () => {
+        try {
+            setIsLoading(true);
+            let localMessages = [...messages, {role: 'user', 'message': input}];
+            setInput("");
+            let res = await fetch("/api/chat/", {
+                body: JSON.stringify({
+                    message: localMessages.at(-1).input,
+                    repo: router.query.slug
+                }),
+            });
+            res = await res.json();
+    
+            // when the information is received, add the sources information to the regular information
+    
+            let sourcesString = "";
+            for(var i = 0; i < res['sources'].length; i++){
+                let metadata = res['sources']['metadata']['title'];
+                
+                sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['url']}](${metadata['url']})`;
+            }
+    
+            res['message'] += "\n ### Sources" + sourcesString;
+    
+            setMessages([...messages, {role: 'assistant', 'message': res['message']}]);
+            setIsLoading(false);
+        } catch (err) {
+            setIsLoading(false);
+            setError(true);
+        }
+    }
 
 
     return (
@@ -35,16 +76,15 @@ export default function RepoChat(){
                     <CodeRenderedMarkdown markdown={item.content}></CodeRenderedMarkdown>
                 </Card>
             ))}
+            {isLoading && <Loader/>}
             <div ref={messagesFooter}/>
         </Box>
 
 
-        <form onSubmit={handleSubmit}>
-            <Flex gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
-                <Textarea size="lg" style={{alignSelf: 'flex-end'}} onChangeText={handleInputChange} radius='md' value={input} placeholder="Your message" label="Message"/>
-                <Button size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading}>{isLoading ? 'Loading...' : 'Send'}</Button>
-            </Flex>
-        </form>
+        <Box gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
+            <Textarea size="lg" w='flex' style={{alignSelf: 'flex-end'}} onChangeText={handleInputChange} radius='md' defaultValue={input} placeholder="Your message" label="Message"/>
+            <Button onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading}>Send</Button>
+        </Box>
 
         {error && <Alert withCloseButton closeButtonLabel="Close alert" icon={<IconAlertCircle size="1rem"/>} title="error :(" color="red">
                 there was an error loading your response. if this issue persists please let us know. we will try to fix it asap.
