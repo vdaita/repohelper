@@ -38,7 +38,7 @@ app = typer.Typer()
 @app.command()
 def load_ghissues(issues_repo, store_repo):
     print("Running GitHub Issues loader: ", issues_repo + " for  " + store_repo)
-    loader = GitHubIssuesLoader(repo=issues_repo, access_token=access_token, include_prs=False)
+    loader = GitHubIssuesLoader(repo=issues_repo, access_token=gh_access_token, include_prs=False)
     documents = loader.load_and_split(text_splitter)
     for i in range(0, len(documents)):
         documents[i]["source"] = documents[i]["url"]

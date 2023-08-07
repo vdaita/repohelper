@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, TextInput, Button, Loader, Card, Alert, Flex, Textarea, Box } from '@mantine/core';
+import Head from 'next/head';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useChat } from "ai/react";
 
@@ -67,28 +68,31 @@ export default function RepoChat(){
 
 
     return (
-      <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2 }}>
-        <Box h={400} style={{ overflowY: 'scroll', alignContent: 'flex-end', alignItems: 'end' }} >
-            {messages.length == 0 ? 'Your messages will show here' : ''}
-            {messages.map((item, index) => (
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Text weight={500}>{item.role}</Text>
-                    <CodeRenderedMarkdown markdown={item.content}></CodeRenderedMarkdown>
-                </Card>
-            ))}
-            {isLoading && <Loader/>}
-            <div ref={messagesFooter}/>
-        </Box>
+        <>
+            
+            <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2 }}>
+                <Box h={400} style={{ overflowY: 'scroll', alignContent: 'flex-end', alignItems: 'end' }} >
+                    {messages.length == 0 ? 'Your messages will show here' : ''}
+                    {messages.map((item, index) => (
+                        <Card shadow="sm" padding="lg" radius="md" withBorder>
+                            <Text weight={500}>{item.role}</Text>
+                            <CodeRenderedMarkdown markdown={item.content}></CodeRenderedMarkdown>
+                        </Card>
+                    ))}
+                    {isLoading && <Loader/>}
+                    <div ref={messagesFooter}/>
+                </Box>
 
 
-        <Box gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
-            <Textarea size="lg" w='flex' style={{alignSelf: 'flex-end'}} onChangeText={handleInputChange} radius='md' defaultValue={input} placeholder="Your message" label="Message"/>
-            <Button onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading}>Send</Button>
-        </Box>
+                <Box gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
+                    <Textarea size="lg" w='flex' style={{alignSelf: 'flex-end'}} onChangeText={handleInputChange} radius='md' defaultValue={input} placeholder="Your message" label="Message"/>
+                    <Button onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading}>Send</Button>
+                </Box>
 
-        {error && <Alert withCloseButton closeButtonLabel="Close alert" icon={<IconAlertCircle size="1rem"/>} title="error :(" color="red">
-                there was an error loading your response. if this issue persists please let us know. we will try to fix it asap.
-            </Alert>}
-      </Container>  
+                {error && <Alert withCloseButton closeButtonLabel="Close alert" icon={<IconAlertCircle size="1rem"/>} title="error :(" color="red">
+                        there was an error loading your response. if this issue persists please let us know. we will try to fix it asap.
+                    </Alert>}
+            </Container>  
+        </>
     );
 }
