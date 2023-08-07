@@ -1,9 +1,9 @@
 import ReactMarkdown from 'react-markdown'
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
-import {dark} from 'react-syntax-highlighter/dist/esm/styles/prism'
+import {dark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 
 export default function CodeRenderedMarkdown(markdown){
-    return (<ReactMarkdown
+  return (<ReactMarkdown
     children={markdown}
     components={{
       code({node, inline, className, children, ...props}) {

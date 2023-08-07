@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
+    "@huggingface/agents": "^0.0.5",
+    "@huggingface/hub": "^0.8.4",
+    "@huggingface/inference": "^1.5.1",
     "@mantine/core": "^6.0.17",
     "@mantine/hooks": "^6.0.17",
     "@supabase/supabase-js": "^2.31.0",
@@ -18,13 +21,14 @@
     "@types/react": "18.2.18",
     "@types/react-dom": "18.2.7",
     "ai": "^2.1.31",
-    "langchain": "^0.0.122",
+    "langchain": "^0.0.124",
     "next": "13.4.12",
     "openai-edge": "^1.2.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-markdown": "^8.0.7",
     "react-syntax-highlighter": "^15.5.0",
+    "ttf-loader": "^1.0.2",
     "typescript": "5.1.6"
   }
 }

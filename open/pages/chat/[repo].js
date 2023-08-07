@@ -1,9 +1,11 @@
 import { useRouter } from 'next/router';
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, TextInput, Button, Loader, Card, Alert, Flex, Textarea, Box } from '@mantine/core';
+import { Container, TextInput, Button, Loader, Card, Alert, Flex, Textarea, Box, Text } from '@mantine/core';
+import ReactMarkdown from 'react-markdown';
 import Head from 'next/head';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useChat } from "ai/react";
+import CodeRenderedMarkdown from './../../utils/CodeRenderedMarkdown';
 
 export default function RepoChat(){
     const router = useRouter();
@@ -14,7 +16,7 @@ export default function RepoChat(){
 
     const [messages, setMessages] = useState([]);
 
-    const [input, setInput] = useState("");
+    const messageInput = useRef();
     const [isLoading, setIsLoading] = useState(false);
 
     // const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
@@ -30,37 +32,43 @@ export default function RepoChat(){
         messagesFooter.current.scrollIntoView();
     }, [messages])
 
-    let handleInputChange = (e) => {
-        setInput(e.target.value);
-    }
-
     let sendMessage = async () => {
         try {
             setIsLoading(true);
-            let localMessages = [...messages, {role: 'user', 'message': input}];
-            setInput("");
+            let localMessages = [...messages, {role: 'user', message: messageInput.current.value}];
+            messageInput.current.value = "";
+
+            let reqBody = JSON.stringify({
+                messages: localMessages.at(-1)['message'],
+                repo: router.query.repo
+            })
+
+            console.log("Sending body: ", reqBody, "current repo: ", router.query.repo);
             let res = await fetch("/api/chat/", {
-                body: JSON.stringify({
-                    message: localMessages.at(-1).input,
-                    repo: router.query.slug
-                }),
+                body: reqBody,
+                method: 'POST'
             });
             res = await res.json();
+
+            console.log("Response: ", res);
     
             // when the information is received, add the sources information to the regular information
     
             let sourcesString = "";
-            for(var i = 0; i < res['sources'].length; i++){
-                let metadata = res['sources']['metadata']['title'];
-                
-                sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['url']}](${metadata['url']})`;
+            if(res['sources']){
+                for(var i = 0; i < res['sources'].length; i++){
+                    let metadata = res['sources']['metadata']['title'];
+                    
+                    sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['url']}](${metadata['url']}) \n`;
+                }
+        
+                res['message'] += "\n ### Sources" + sourcesString;
             }
-    
-            res['message'] += "\n ### Sources" + sourcesString;
     
             setMessages([...messages, {role: 'assistant', 'message': res['message']}]);
             setIsLoading(false);
         } catch (err) {
+            console.error(err);
             setIsLoading(false);
             setError(true);
         }
@@ -85,12 +93,12 @@ export default function RepoChat(){
 
 
                 <Box gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
-                    <Textarea size="lg" w='flex' style={{alignSelf: 'flex-end'}} onChangeText={handleInputChange} radius='md' defaultValue={input} placeholder="Your message" label="Message"/>
+                    <Textarea size="lg" w='flex' style={{alignSelf: 'flex-end'}} ref={messageInput} radius='md' placeholder="Your message" label="Message"/>
                     <Button onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading}>Send</Button>
                 </Box>
 
-                {error && <Alert withCloseButton closeButtonLabel="Close alert" icon={<IconAlertCircle size="1rem"/>} title="error :(" color="red">
-                        there was an error loading your response. if this issue persists please let us know. we will try to fix it asap.
+                {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
+                        There was an error loading your response.
                     </Alert>}
             </Container>  
         </>
