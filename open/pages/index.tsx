@@ -16,37 +16,23 @@ export default function Home() {
       </Head>
       <main className={`${styles.main}`}>
         <div className={styles.description}>
-          <p style={{font: 'inter'}}>
-            Chat with our existing repositories 
+          <p style={{font: 'inter', alignContent: 'flex-start'}}>
+            Chat with our existing repositories <br/>
+            <Link href="/chat/mantine" style={{textDecorationLine: 'underline'}}>
+              Mantine
+            </Link>
           </p>
-          <div>
-              <Link href="/chat/mantine" style={{textDecorationLine: 'underline'}}>
-                Mantine
-              </Link>
-          </div>
+
         </div>
 
         <div className={styles.center}>
-          <h1><b>Want to see </b>Repohelper Plus?</h1> <br/>
-          <Flex style={{flexDirection: 'row'}}>
-            <TextInput size="lg" m='md' placeholder="Your email" ></TextInput>
-            <Button size="lg" m='md'>Join the waitlist</Button>
-          </Flex>
-        </div>
-
-        <div className={styles.grid}>
-          <Card shadow="sm" padding="lg" m={'md'} radius="lg" withBorder>
-            OpenAI Integration
-          </Card>
-          <Card shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
-            Multiple data sources
-          </Card>
-          <Card shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
-            Search engine integration
-          </Card>
-          <Card shadow="sm" padding="lg" m={'md'} radius="md" withBorder>
-            Faster results
-          </Card>
+          <h1 style={{fontSize: 100}} className={styles.gradient}>Repohelper</h1>
+          <ul>
+            <li>Documentation takes a long time to sift through.</li>
+            <li>Web scrapers take a long time to create.</li>
+            <li>Non-OpenAI LLMs are difficult to use day-to-day.</li>
+          </ul>
+          <p>Repohelper aims to create a powerful interface for developers to intelligently use documentation while programming.</p>
         </div>
       </main>
     </>

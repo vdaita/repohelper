@@ -14,10 +14,18 @@ export default function RepoChat(){
 
     const [error, setError] = useState(false);
 
-    const [messages, setMessages] = useState([]);
-
     const messageInput = useRef();
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingSources, setIsLoadingSources] = useState(false);
+
+    const {messages, setMessages, append, isLoading} = useChat({
+        onError: (err) => {
+            console.error(err);
+            setError(err);
+        },
+        body: {
+            repo: router.query.repo
+        }
+    });
 
     // const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     //     onError: (err) => {
@@ -34,42 +42,45 @@ export default function RepoChat(){
 
     let sendMessage = async () => {
         try {
-            setIsLoading(true);
-            let localMessages = [...messages, {role: 'user', message: messageInput.current.value}];
+            setIsLoadingSources(true);
+            let localMessages = [...messages, {role: 'user', content: messageInput.current.value}];
+            setMessages(localMessages);            
             messageInput.current.value = "";
 
             let reqBody = JSON.stringify({
-                messages: localMessages.at(-1)['message'],
+                messages: localMessages,
                 repo: router.query.repo
             })
 
+
             console.log("Sending body: ", reqBody, "current repo: ", router.query.repo);
-            let res = await fetch("/api/chat/", {
-                body: reqBody,
+
+            let documentsRes = await fetch("/api/relevant_documents", {
+                body: JSON.stringify(reqBody),
                 method: 'POST'
             });
-            res = await res.json();
+            documentsRes = await documentsRes.json();
 
-            console.log("Response: ", res);
-    
-            // when the information is received, add the sources information to the regular information
-    
-            let sourcesString = "";
-            if(res['sources']){
-                for(var i = 0; i < res['sources'].length; i++){
-                    let metadata = res['sources']['metadata']['title'];
-                    
-                    sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['url']}](${metadata['url']}) \n`;
-                }
-        
-                res['message'] += "\n ### Sources" + sourcesString;
+            if(documentsRes["error"]){
+                setIsLoadingSources(false);
+                setError(true);
+                return;
             }
-    
-            setMessages([...messages, {role: 'assistant', 'message': res['message']}]);
-            setIsLoading(false);
+            
+            console.log("Documents retrieval result: ", documentsRes);
+            let sourcesString = "### Sources \n";
+            for(var i = 0; i < documentsRes.length; i++){
+                sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['source']}](${metadata['source']})\n`
+            }
+
+            setIsLoadingSources(false);
+
+            localMessages.push({role: 'system', content: sourcesString});
+
+            append(localMessages);
         } catch (err) {
             console.error(err);
-            setIsLoading(false);
+            setIsLoadingSources(false);
             setError(true);
         }
     }
@@ -79,22 +90,24 @@ export default function RepoChat(){
         <>
             
             <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2 }}>
+                <h2>{router.query.repo}</h2>
                 <Box h={400} style={{ overflowY: 'scroll', alignContent: 'flex-end', alignItems: 'end' }} >
                     {messages.length == 0 ? 'Your messages will show here' : ''}
                     {messages.map((item, index) => (
-                        <Card shadow="sm" padding="lg" radius="md" withBorder>
+                        <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
                             <Text weight={500}>{item.role}</Text>
-                            <CodeRenderedMarkdown markdown={item.content}></CodeRenderedMarkdown>
+                            <Text>{item.content}</Text>
+                            {/* <CodeRenderedMarkdown markdown={item.content}></CodeRenderedMarkdown> */}
                         </Card>
                     ))}
-                    {isLoading && <Loader/>}
+                    {(isLoadingSources || isLoading) && <Loader m="sm"/>}
                     <div ref={messagesFooter}/>
                 </Box>
 
 
-                <Box gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
-                    <Textarea size="lg" w='flex' style={{alignSelf: 'flex-end'}} ref={messageInput} radius='md' placeholder="Your message" label="Message"/>
-                    <Button onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading}>Send</Button>
+                <Box p="sm" gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
+                    <Textarea m="sm" size="lg" w='flex' style={{alignSelf: 'flex-end'}} ref={messageInput} radius='md' placeholder="Your message" label="Message"/>
+                    <Button m="sm" onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading || isLoadingSources}>Send</Button>
                 </Box>
 
                 {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
