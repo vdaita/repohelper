@@ -78,16 +78,17 @@ export default async function POST(req: Request) {
 
   let embeddedQuestion = await embedQueryOpenAI(userQuery);
 
-  console.log("Finished embedding the question: ", embeddedQuestion);
+  // console.log("Finished embedding the question: ", embeddedQuestion);
+  console.log("Finished embedding the question");
 
   let rpcQueryBody = {
     query_embedding: embeddedQuestion,
-    match_count: 3,
-    match_threshold: 0.78,
+    match_count: 5,
+    match_threshold: 0.65,
     repo: repo
   };
 
-  console.log("RPC query body: ", rpcQueryBody);
+  // console.log("RPC query body: ", rpcQueryBody);
 
   let { data: matches, error: matchError} = await supabaseClient.rpc('match_documents', rpcQueryBody)
 
@@ -99,7 +100,8 @@ export default async function POST(req: Request) {
     return new Response(JSON.stringify({"documents": [], "error": "Error"}));
   }
 
-  console.log("Matched documents: ", matches, matchError);
+  // console.log("Matched documents: ", matches, matchError);
+  console.log("Documents matched!")
 
   // let documentation = "";
   // for(var i = 0; i < matches.length; i++){

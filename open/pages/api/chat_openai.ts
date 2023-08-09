@@ -15,8 +15,14 @@ const config = new Configuration({
   const openai = new OpenAIApi(config);
 
 export default async function handler(req: Request) {
-    const {messages, documents} = await req.json();
 
+    // console.log("handler request", req, req.body);
+    console.log("Handler request");
+
+    let {messages, repo, documents} = await req.json();
+
+    // console.log("Received Chat OpenAI request from frontend: ", messages, documents, repo);
+    let trimmedMessages = messages.slice(-4);
     let documentsString = "";
     for(var i = 0; i < documents.length; i++){
         documentsString += documents[i]["content"];
@@ -28,12 +34,15 @@ export default async function handler(req: Request) {
         model: 'gpt-3.5-turbo',
         stream: true,
         messages: [
-            {role: "system", content: "You are a helpful coding assistant."}, 
+            {role: "system", content: `You are a helpful coding assistant that uses Markdown to provide the best possible answer to the user based on your provided documentation and other knowledge. 
+            Your answers should be focused on using the ${repo} library and tools.`}, 
             {role: "system", content: `Documentation: ${documentsString}`},
-            ...messages
+            ...trimmedMessages
         ]
     });
 
     const stream = OpenAIStream(response);
     return new StreamingTextResponse(stream);
 }
+
+export const runtime = 'edge';
