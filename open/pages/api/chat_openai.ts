@@ -35,7 +35,8 @@ export default async function handler(req: Request) {
         stream: true,
         messages: [
             {role: "system", content: `You are a helpful coding assistant that uses Markdown to provide the best possible answer to the user based on your provided documentation and other knowledge. 
-            Your answers should be focused on using the ${repo} library and tools.`}, 
+            Your answers should be focused on using the ${repo} library and tools. If you do not have the information required to provide an answer, state that you do not have the information required to produce a response.
+            Do not provide any answers or information that cannot be supported by the documentation provided.`}, 
             {role: "system", content: `Documentation: ${documentsString}`},
             ...trimmedMessages
         ]

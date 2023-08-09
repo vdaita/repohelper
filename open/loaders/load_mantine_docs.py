@@ -20,7 +20,7 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=750, chunk_overlap=0)
 # embeddings_model = HuggingFaceEmbeddings(model_name=embeddings_repo_id)
 embeddings_model = OpenAIEmbeddings(openai_api_key=os.environ.get("OPENAI_API_KEY"))
 
-rootdir = "mantine_docs"
+rootdir = "mantine_docs/"
 for subdir, dirs, files in os.walk(rootdir):
     for file in files:
         fp = os.path.join(subdir, file)

@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import React, { useState, useEffect, useRef } from 'react';
-import { AppBar, Container, TextInput, Badge, Button, Loader, Card, Alert, Flex, Textarea, Box, Text, useMantineTheme, Navbar } from '@mantine/core';
+import { AppBar, Container, TextInput, Badge, Button, Loader, Card, Alert, Flex, Textarea, Box, Text, useMantineTheme, Navbar, AppShell } from '@mantine/core';
 import Head from 'next/head';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useChat } from "ai/react";
@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown'
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import {atomDark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import styles from '@/styles/Chat.module.css';
+import { Mixpanel } from '@/utils/Mixpanel';
+import { notifications } from "@mantine/notifications";
 
 export default function RepoChat(){
     const router = useRouter();
@@ -20,9 +22,13 @@ export default function RepoChat(){
     const messageInput = useRef();
     const [isLoadingSources, setIsLoadingSources] = useState(false);
     
-    const [feedbackProvided, setFeedbackProvided] = useState();
+    const [feedbackProvided, setFeedbackProvided] = useState(false);
+    const [canMixpanelAnswered, setCanMixpanelAnswered] = useState(false);
 
     const [sources, setSources] = useState([]);
+    
+    const [shouldJump, setShouldJump] = useState(true);
+
 
     const {messages, setMessages, append, isLoading} = useChat({
         api: "/api/chat_openai",
@@ -47,7 +53,15 @@ export default function RepoChat(){
 
     useEffect(() => {
         messagesFooter.current.scrollIntoView();
-    }, [messages])
+    }, [messages]);
+
+    useEffect(() => {
+
+        // by default: should it be on true or false?
+
+        setFeedbackProvided(localStorage.getItem("feedbackProvided") ? true : false); // want to be more explicit about null = false, idk why I did that
+        setCanMixpanelAnswered(localStorage.getItem("canMixpanelAnswered") ? true : false);
+    }, []);
 
     let handleKeyPress = (event) => {
         console.log(event);
@@ -64,6 +78,8 @@ export default function RepoChat(){
         }
 
         try {
+            Mixpanel.track('Question asked');
+
             setIsLoadingSources(true);
             let localMessages = [...messages, {role: 'user', content: messageInput.current.value}];
             setMessages(localMessages);            
@@ -84,6 +100,7 @@ export default function RepoChat(){
             documentsRes = await documentsRes.json();
 
             if(documentsRes["error"]){
+                Mixpanel.track("Error retrieving documents", {"error": documentsRes["error"]});
                 setIsLoadingSources(false);
                 setError(true);
                 return;
@@ -93,12 +110,16 @@ export default function RepoChat(){
             console.log("Documents retrieval result: ", documentsRes["documents"]);
             
             let sourcesString = "";
+            let sourcesSet = new Set();
 
             if(documentsRes["documents"].length > 0){
                 sourcesString = "### Sources \n";
                 for(var i = 0; i < documentsRes["documents"].length; i++){
                     let metadata = documentsRes["documents"][i]["metadata"];
-                    sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['source']}](${metadata['source']})\n`
+                    if(!sourcesSet.has(metadata["source"])){
+                        sourcesSet.add(metadata["source"]);
+                        sourcesString += `[${metadata['title'] ? metadata['title'] : metadata['source']}](${metadata['source']})\n`
+                    }
                 }
             } else {
                 sourcesString = "No available sources.";
@@ -111,9 +132,17 @@ export default function RepoChat(){
             append({role: 'system', content: sourcesString});
         } catch (err) {
             console.error(err);
+            Mixpanel.track("Error with requests: ", {error: err});
             setIsLoadingSources(false);
             setError(true);
         }
+    }
+
+    let deleteMessage = (index) => {
+        let localMessages = [...messages];
+        localMessages.splice(index, 1);
+        setMessages(localMessages);
+        setShouldJump(false);
     }
 
     let genGradient = (role) => {
@@ -129,17 +158,39 @@ export default function RepoChat(){
     }
 
     let feedback = (type) => {
-
+        Mixpanel.track("Feedback Provided", {"type": type});
+        localStorage.setItem("feedbackProvided", true);
+        notifications.show({
+            title: 'Thank you!',
+            message: "Thank you for submitting your feedback!"
+        });
         setFeedbackProvided(true);
     }
 
+    let mixpanelResponse = (ans) => {
+        if(!ans){
+            mixpanel.opt_out_tracking();
+        }
+        setCanMixpanelAnswered(true);
+        localStorage.setItem("canMixpanelAnswered", true);
+    }
+
     return (
-        <>
-            
+        <AppShell>  
             <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2 }}>
-                <h2>chat with {router.query.repo} docs</h2>
-                <Text size="xs">alpha version</Text>
-                <Box h={400} style={{ overflowY: 'scroll', alignContent: 'flex-end', alignItems: 'end' }} >
+                <Card shadow="sm" style={{position: 'sticky', top: 0, background: 'white', zIndex: 100}}>
+                    <Text size="lg">chat with {router.query.repo} docs</Text>
+                    <Text size="xs">alpha</Text>
+                </Card>
+
+
+                <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
+                    We use Mixpanel to understand how people use this website and to track errors.
+                    <Button size="xs" m="xs" mcolor="green" onClick={() => mixpanelResponse(true)}>Sounds good!</Button>
+                    <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Opt out.</Button>
+                </Card>
+
+                <Box  >
                     {messages.length == 0 ? 'Your messages will show here' : ''}
                     {messages.map((item, index) => (
                         <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
@@ -170,8 +221,12 @@ export default function RepoChat(){
                                 }
                                 }}
                             />
+                            {(!isLoading && !isLoadingSources) && <Button color="red" size="xs" onClick={() => deleteMessage(index)}>Delete message</Button>}
                         </Card>
                     ))}
+                    {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
+                        There was an error loading your response.
+                    </Alert>}
                     {(isLoadingSources || isLoading) && <Loader m="sm"/>}
                     <div ref={messagesFooter}/>
                 </Box>
@@ -184,26 +239,22 @@ export default function RepoChat(){
                 </Box>
                 
                 { /* do you like the service? */ }
-                <Card p="sm" m="sm" style={{flex: 'flex-shrink', flexWrap: 'wrap', alignSelf: 'baseline'}} direction="row" withBorder shadow="sm" radius="md">
-                    <Box style={{flexDirection: 'row', flex: 'flex-shrink', flexWrap: 'wrap', alignSelf:'baseline'}}>
-                        {!feedbackProvided && <>
-                            Like this service?
-                            <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}} m='xs'  size="sm" color onClick={() => feedback("positive")}>
-                            👍
-                            </Button>
-                            <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}}  size="sm" onClick={() => feedback("negative")}>
-                            👎
-                            </Button>
-                        </>}
-                        {feedbackProvided && <>Thanks for providing your feedback!</>}
-                    </Box>
-                </Card>
-                
-
-                {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
-                        There was an error loading your response.
-                    </Alert>}
+                {(!feedbackProvided && messages.length > 3) && 
+                    <Card p="sm" m="sm" style={{flex: 'flex-shrink', flexWrap: 'wrap', alignSelf: 'baseline'}} direction="row" withBorder shadow="sm" radius="md">
+                        <Box style={{flexDirection: 'row', flex: 'flex-shrink', flexWrap: 'wrap', alignSelf:'baseline'}}>
+                            <>
+                                Like this service?
+                                <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}} m='xs'  size="sm" color onClick={() => feedback("positive")}>
+                                👍
+                                </Button>
+                                <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}}  size="sm" onClick={() => feedback("negative")}>
+                                👎
+                                </Button>
+                            </>
+                        </Box>
+                    </Card>
+                }
             </Container>  
-        </>
+        </AppShell>
     );
 }
