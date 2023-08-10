@@ -27,12 +27,12 @@ export default function Home() {
 
         <div className={styles.center}>
           <h1 style={{fontSize: 100}} className={styles.gradient}>Repohelper</h1>
-          <ul>
+          {/* <ul>
             <li>Documentation takes a long time to sift through.</li>
             <li>Web scrapers take a long time to create.</li>
             <li>Non-OpenAI LLMs are difficult to use day-to-day.</li>
           </ul>
-          <p>Repohelper aims to create a powerful interface for developers to intelligently use documentation while programming.</p>
+          <p>Repohelper aims to create a powerful interface for developers to intelligently use documentation while programming.</p> */}
         </div>
       </main>
     </>

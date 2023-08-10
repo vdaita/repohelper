@@ -8,8 +8,8 @@ import ReactMarkdown from 'react-markdown'
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import {atomDark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import styles from '@/styles/Chat.module.css';
-import { Mixpanel } from '@/utils/Mixpanel';
 import { notifications } from "@mantine/notifications";
+import Mixpanel from '../../utils/Mixpanel';
 
 export default function RepoChat(){
     const router = useRouter();
@@ -28,7 +28,6 @@ export default function RepoChat(){
     const [sources, setSources] = useState([]);
     
     const [shouldJump, setShouldJump] = useState(true);
-
 
     const {messages, setMessages, append, isLoading} = useChat({
         api: "/api/chat_openai",
@@ -51,16 +50,24 @@ export default function RepoChat(){
     //     }
     // });
 
-    useEffect(() => {
-        messagesFooter.current.scrollIntoView();
-    }, [messages]);
+    // useEffect(() => {
+    //     messagesFooter.current.scrollIntoView();
+    // }, [messages]);
 
     useEffect(() => {
 
         // by default: should it be on true or false?
+        console.log("Mixpanel: ", Mixpanel);
+        // Mixpanel.track('Chat page loaded');
 
-        setFeedbackProvided(localStorage.getItem("feedbackProvided") ? true : false); // want to be more explicit about null = false, idk why I did that
-        setCanMixpanelAnswered(localStorage.getItem("canMixpanelAnswered") ? true : false);
+        let wasFeedbackProvided = localStorage.getItem("feedbackProvided") ? true : false;
+        let wasCanMixpanelAnswered = localStorage.getItem("canMixpanelAnswered") ? true : false;
+
+        setFeedbackProvided(wasFeedbackProvided); // want to be more explicit about null = false, idk why I did that
+        setCanMixpanelAnswered(wasCanMixpanelAnswered);
+    
+        console.log("Feedback provided:  ", wasFeedbackProvided);
+        console.log("Can mixpanel answered: ", canMixpanelAnswered);
     }, []);
 
     let handleKeyPress = (event) => {
@@ -78,7 +85,7 @@ export default function RepoChat(){
         }
 
         try {
-            Mixpanel.track('Question asked');
+            Mixpanel.track('Question asked', {});
 
             setIsLoadingSources(true);
             let localMessages = [...messages, {role: 'user', content: messageInput.current.value}];
@@ -100,7 +107,7 @@ export default function RepoChat(){
             documentsRes = await documentsRes.json();
 
             if(documentsRes["error"]){
-                Mixpanel.track("Error retrieving documents", {"error": documentsRes["error"]});
+                Mixpanel.track("Error retrieving documents", {});
                 setIsLoadingSources(false);
                 setError(true);
                 return;
@@ -132,7 +139,8 @@ export default function RepoChat(){
             append({role: 'system', content: sourcesString});
         } catch (err) {
             console.error(err);
-            Mixpanel.track("Error with requests: ", {error: err});
+            Mixpanel.track("Non-documents-rpc error", {"error": err});
+            
             setIsLoadingSources(false);
             setError(true);
         }
@@ -158,7 +166,7 @@ export default function RepoChat(){
     }
 
     let feedback = (type) => {
-        Mixpanel.track("Feedback Provided", {"type": type});
+        Mixpanel.track("Feedback provided", {"type": type});
         localStorage.setItem("feedbackProvided", true);
         notifications.show({
             title: 'Thank you!',
@@ -169,92 +177,92 @@ export default function RepoChat(){
 
     let mixpanelResponse = (ans) => {
         if(!ans){
-            mixpanel.opt_out_tracking();
+            Mixpanel.opt_out_tracking();
+        } else {
+            Mixpanel.opt_in_tracking();
         }
         setCanMixpanelAnswered(true);
         localStorage.setItem("canMixpanelAnswered", true);
     }
 
     return (
-        <AppShell>  
-            <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2 }}>
-                <Card shadow="sm" style={{position: 'sticky', top: 0, background: 'white', zIndex: 100}}>
-                    <Text size="lg">chat with {router.query.repo} docs</Text>
-                    <Text size="xs">alpha</Text>
-                </Card>
+        <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2}} className={styles.container}>
+            <Card shadow="sm" style={{position: 'sticky', top: 0, background: 'white', zIndex: 100}}>
+                <Text size="lg" className={styles.container}>chat with {router.query.repo} docs</Text>
+                <Text size="xs">alpha</Text>
+            </Card>
 
 
-                <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
-                    We use Mixpanel to understand how people use this website and to track errors.
-                    <Button size="xs" m="xs" mcolor="green" onClick={() => mixpanelResponse(true)}>Sounds good!</Button>
-                    <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Opt out.</Button>
-                </Card>
+            {!canMixpanelAnswered && <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
+                We use Mixpanel to understand how people use this website and to track errors.
+                <Button size="xs" m="xs" mcolor="green" onClick={() => mixpanelResponse(true)}>Sounds good!</Button>
+                <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Opt out.</Button>
+            </Card>}
 
-                <Box  >
-                    {messages.length == 0 ? 'Your messages will show here' : ''}
-                    {messages.map((item, index) => (
-                        <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
-                            <Badge variant="gradient" gradient={genGradient(item.role)}> 
-                                <Text weight={500}>
-                                    {item.role}
-                                </Text>
-                            </Badge>
-                            <ReactMarkdown
-                                m="sm"
-                                children={item.content}
-                                components={{
-                                code({node, inline, className, children, ...props}) {
-                                    const match = /language-(\w+)/.exec(className || '')
-                                    return !inline && match ? (
-                                    <SyntaxHighlighter
-                                        {...props}
-                                        children={String(children).replace(/\n$/, '')}
-                                        style={atomDark}
-                                        language={match[1]}
-                                        PreTag="div"
-                                    />
-                                    ) : (
-                                    <code {...props} className={className}>
-                                        {children}
-                                    </code>
-                                    )
-                                }
-                                }}
-                            />
-                            {(!isLoading && !isLoadingSources) && <Button color="red" size="xs" onClick={() => deleteMessage(index)}>Delete message</Button>}
-                        </Card>
-                    ))}
-                    {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
-                        There was an error loading your response.
-                    </Alert>}
-                    {(isLoadingSources || isLoading) && <Loader m="sm"/>}
-                    <div ref={messagesFooter}/>
-                </Box>
-
-
-                <Box p="sm" gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
-                    <Textarea disabled={isLoading || isLoadingSources} m="sm" size="lg" w='flex' onKeyPress={handleKeyPress} style={{alignSelf: 'flex-end'}} ref={messageInput} radius='md' placeholder="Your question"/>
-                    <Text m="sm" size="xs">Press Enter to submit and Shift-Enter for newline.</Text>
-                    <Button mx="sm" onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading || isLoadingSources}>Send</Button>
-                </Box>
-                
-                { /* do you like the service? */ }
-                {(!feedbackProvided && messages.length > 3) && 
-                    <Card p="sm" m="sm" style={{flex: 'flex-shrink', flexWrap: 'wrap', alignSelf: 'baseline'}} direction="row" withBorder shadow="sm" radius="md">
-                        <Box style={{flexDirection: 'row', flex: 'flex-shrink', flexWrap: 'wrap', alignSelf:'baseline'}}>
-                            <>
-                                Like this service?
-                                <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}} m='xs'  size="sm" color onClick={() => feedback("positive")}>
-                                👍
-                                </Button>
-                                <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}}  size="sm" onClick={() => feedback("negative")}>
-                                👎
-                                </Button>
-                            </>
-                        </Box>
+            <Box mt="md">
+                {messages.length == 0 ? 'Your messages will show here' : ''}
+                {messages.map((item, index) => (
+                    <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
+                        <Badge variant="gradient" gradient={genGradient(item.role)}> 
+                            <Text weight={500}>
+                                {item.role}
+                            </Text>
+                        </Badge>
+                        <ReactMarkdown
+                            m="sm"
+                            children={item.content}
+                            components={{
+                            code({node, inline, className, children, ...props}) {
+                                const match = /language-(\w+)/.exec(className || '')
+                                return !inline && match ? (
+                                <SyntaxHighlighter
+                                    {...props}
+                                    children={String(children).replace(/\n$/, '')}
+                                    style={atomDark}
+                                    language={match[1]}
+                                    PreTag="div"
+                                />
+                                ) : (
+                                <code {...props} className={className}>
+                                    {children}
+                                </code>
+                                )
+                            }
+                            }}
+                        />
+                        {(!isLoading && !isLoadingSources) && <Button color="red" size="xs" onClick={() => deleteMessage(index)}>Delete message</Button>}
                     </Card>
-                }
-            </Container>  
-        </AppShell>
+                ))}
+                {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
+                    There was an error loading your response.
+                </Alert>}
+                {(isLoadingSources || isLoading) && <Loader m="sm"/>}
+                <div ref={messagesFooter}/>
+            </Box>
+
+
+            <Box p="sm" gap="md" justify="flex-start" align="flex-start" direction="row" style={{marginBottom: 'auto'}}>
+                <Textarea disabled={isLoading || isLoadingSources} m="sm" size="lg" w='flex' onKeyPress={handleKeyPress} styles={{alignSelf: 'flex-end'}} className={styles.container} ref={messageInput} radius='md' placeholder="Your question"/>
+                <Text m="sm" size="xs">Press Enter to submit and Shift-Enter for newline.</Text>
+                <Button mx="sm" onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading || isLoadingSources}>Send</Button>
+            </Box>
+            
+            { /* do you like the service? */ }
+            {(!feedbackProvided && messages.length > 3) && 
+                <Card p="sm" m="sm" style={{flex: 'flex-shrink', flexWrap: 'wrap', alignSelf: 'baseline'}} direction="row" withBorder shadow="sm" radius="md">
+                    <Box style={{flexDirection: 'row', flex: 'flex-shrink', flexWrap: 'wrap', alignSelf:'baseline'}}>
+                        <>
+                            Like this service?
+                            <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}} m='xs'  size="sm" color onClick={() => feedback("thumbs-up")}>
+                            👍
+                            </Button>
+                            <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}}  size="sm" onClick={() => feedback("thumbs-down")}>
+                            👎
+                            </Button>
+                        </>
+                    </Box>
+                </Card>
+            }
+        </Container>  
     );
 }

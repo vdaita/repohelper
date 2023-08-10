@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css?family=Inter&display=swap');
+
 .main {
   display: flex;
   flex-direction: column;
@@ -5,6 +7,7 @@
   align-items: center;
   padding: 6rem;
   min-height: 100vh;
+  font-family: 'Inter', sans-serif;
 }
 
 .description {
@@ -99,6 +102,7 @@
 
 .gradient{
   font-size: 72px;
+  font-family: 'Inter', sans-serif;
   background: radial-gradient(ellipse at top, #e66465, transparent),
   radial-gradient(ellipse at bottom, #4d9f0c, transparent);
   -webkit-background-clip: text;

@@ -1,6 +1,11 @@
-import mixpanel from 'mixpanel-browser';
-mixpanel.init(process.env.NEXT_PUBLIC_MIXPANEL_TOKEN, {debug: !(process.env.NODE_ENV === 'production'), track_pageview: true, persistence: 'localStorage', ignore_dnt: true});
+import mixpanel, { Dict, Query } from 'mixpanel-browser';
 
-// Maybe add an environment check
+const isProd = process.env.NODE_ENV === "production";
 
-export let Mixpanel = mixpanel;
+mixpanel.init(process.env.NEXT_PUBLIC_MIXPANEL_TOKEN, {
+    api_host: (isProd ? "https://repohelper.longlaketech.com/mp" : "https://localhost:3000/mp"),
+    debug: !isProd,
+    track_pageview: true
+});
+
+export default mixpanel;
