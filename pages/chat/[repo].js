@@ -183,23 +183,23 @@ export default function RepoChat(){
     }
 
     let feedback = (type) => {
-        if(Mixpanel){
-            console.log("There is Mixpanel, tracking feedback");
-            Mixpanel.track("Feedback provided", {"type": type});
-        }
-        if(Mixpanel.has_opted_out_tracking()){
-            // track the feedback with Supabase
-            const { error } = supabaseClient.from("feedback").insert({
-                data: {"like_product": type}
+        // if(Mixpanel){
+        //     console.log("There is Mixpanel, tracking feedback");
+        //     Mixpanel.track("Feedback provided", {"type": type});
+        // }
+
+        const { error } = supabaseClient.from("feedback").insert({
+            data: {"like_product": type}
+        });
+
+        if(error){
+            notifications.show({
+                title: 'Error sending feedback',
+                color: 'red'
             });
-            if(error){
-                notifications.show({
-                    title: 'Error sending feedback',
-                    color: 'red'
-                });
-                return
-            }
+            return;
         }
+
         localStorage.setItem("feedbackProvided", true);
         notifications.show({
             title: 'Thank you!',
