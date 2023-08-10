@@ -237,7 +237,7 @@ export default function RepoChat(){
 
                 
                 {!canMixpanelAnswered && <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
-                    This website uses Mixpanel to understand user behavior.
+                    This website uses cookies to understand user behavior.
                     <Button size="xs" m="xs" mcolor="green" onClick={() => mixpanelResponse(true)}>Sounds good!</Button>
                     <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Necessary data only.</Button>
                 </Card>}
