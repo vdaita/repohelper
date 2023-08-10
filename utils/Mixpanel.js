@@ -8,6 +8,7 @@ let createMixpanelInstance = (origin) => {
         debug: !isProd,
         track_pageview: true
     });
+    return mixpanel;
 }
 
 
