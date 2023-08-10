@@ -9,7 +9,9 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import {atomDark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import styles from '@/styles/Chat.module.css';
 import { notifications } from "@mantine/notifications";
-import Mixpanel from '../../utils/Mixpanel';
+import createMixpanelInstance from '../../utils/Mixpanel';
+
+let Mixpanel = createMixpanelInstance(window.location.origin);
 
 export default function RepoChat(){
     const router = useRouter();
@@ -58,7 +60,7 @@ export default function RepoChat(){
 
         // by default: should it be on true or false?
         console.log("Mixpanel: ", Mixpanel);
-        // Mixpanel.track('Chat page loaded');
+        Mixpanel.track('Loaded chat', {source: window.location.origin});
 
         let wasFeedbackProvided = localStorage.getItem("feedbackProvided") ? true : false;
         let wasCanMixpanelAnswered = localStorage.getItem("canMixpanelAnswered") ? true : false;
