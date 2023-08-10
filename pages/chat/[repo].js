@@ -60,7 +60,24 @@ export default function RepoChat(){
 
     let Mixpanel;
 
+
+    let countOccurence = async (occType) => {
+        let {error} = await supabaseClient.from("analytics").insert({
+            data: {"type": occType}
+        });
+        if(error){
+            console.error("Count occurence error: ", error);
+        }
+        // try {
+        //     await fetch("https://api.countapi.xyz/hit/repohelper.longlaketech.com/" + occType);
+        // } catch {
+        //     console.log("Error counting occurences");
+        // }
+    }
+
     useEffect(() => {
+
+        countOccurence("chat_pageview_" + router.query.repo);
 
         // by default: should it be on true or false?
         Mixpanel = createMixpanelInstance(window.location.origin);
@@ -89,6 +106,7 @@ export default function RepoChat(){
         }
     }
 
+
     let sendMessage = async () => {
 
         if(messageInput.current.value == 0){
@@ -99,6 +117,8 @@ export default function RepoChat(){
             if(Mixpanel){
                 Mixpanel.track('Question asked', {});
             }
+
+            countOccurence("question");
 
             setIsLoadingSources(true);
             let localMessages = [...messages, {role: 'user', content: messageInput.current.value}];
@@ -188,9 +208,7 @@ export default function RepoChat(){
         //     Mixpanel.track("Feedback provided", {"type": type});
         // }
 
-        const { error } = supabaseClient.from("feedback").insert({
-            data: {"like_product": type}
-        });
+        countOccurence("feedback_" + type);
 
         if(error){
             notifications.show({
@@ -236,11 +254,11 @@ export default function RepoChat(){
                 </Card>
 
                 
-                {!canMixpanelAnswered && <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
+                {/* {!canMixpanelAnswered && <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
                     This website uses cookies to understand user behavior.
                     <Button size="xs" m="xs" mcolor="green" onClick={() => mixpanelResponse(true)}>Sounds good!</Button>
                     <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Necessary data only.</Button>
-                </Card>}
+                </Card>} */}
 
                 <Box mt="md">
                     {messages.length == 0 ? 'Your messages will show here' : ''}
