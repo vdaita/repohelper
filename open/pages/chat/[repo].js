@@ -1,3 +1,5 @@
+'use client';
+
 import { useRouter } from 'next/router';
 import React, { useState, useEffect, useRef } from 'react';
 import { AppBar, Container, TextInput, Badge, Button, Loader, Card, Alert, Flex, Textarea, Box, Text, useMantineTheme, Navbar, AppShell } from '@mantine/core';
@@ -10,8 +12,6 @@ import {atomDark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import styles from '@/styles/Chat.module.css';
 import { notifications } from "@mantine/notifications";
 import createMixpanelInstance from '../../utils/Mixpanel';
-
-let Mixpanel = createMixpanelInstance(window.location.origin);
 
 export default function RepoChat(){
     const router = useRouter();
@@ -56,9 +56,12 @@ export default function RepoChat(){
     //     messagesFooter.current.scrollIntoView();
     // }, [messages]);
 
+    let Mixpanel;
+
     useEffect(() => {
 
         // by default: should it be on true or false?
+        Mixpanel = createMixpanelInstance(window.location.origin);
         console.log("Mixpanel: ", Mixpanel);
         Mixpanel.track('Loaded chat', {source: window.location.origin});
 
