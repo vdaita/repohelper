@@ -1,3 +1,7 @@
+export default function Models() {
+    return (<></>)
+}
+
 // import styles from '@/styles/Home.module.css'
 // import { Inter } from 'next/font/google'
 // import { Container, Box, Input, Button, Heading, Tabs, TabList, TabPanels, Tab, TabPanel, Textarea, useToast, Text } from '@chakra-ui/react';
