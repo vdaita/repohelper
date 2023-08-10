@@ -12,9 +12,9 @@ export default function Home() {
   useEffect(() => {
     Mixpanel = createMixpanelInstance(window.location.origin);
     console.log("Initialized Mixpanel: ", Mixpanel);
-    if(Mixpanel){
-      Mixpanel.opt_out_tracking();
-    }
+    // if(Mixpanel){
+    //   Mixpanel.opt_out_tracking();
+    // }
   }, []);
 
   return (
