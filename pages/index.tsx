@@ -17,7 +17,7 @@ export default function Home() {
       <main className={`${styles.main}`}>
         <div className={styles.description}>
           <p style={{font: 'inter', alignContent: 'flex-start'}}>
-            Chat with our existing repositories <br/>
+            Current repositories <br/>
             <Link href="/chat/mantine" style={{textDecorationLine: 'underline'}}>
               Mantine
             </Link>
