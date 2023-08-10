@@ -3,9 +3,20 @@ import Image from 'next/image'
 import styles from '@/styles/Home.module.css'
 import Link from 'next/link'
 import { Button, Card, Flex, TextInput } from "@mantine/core";
+import { useEffect, useState } from 'react';
+import createMixpanelInstance from '../utils/Mixpanel';
 
 
 export default function Home() {
+  let Mixpanel;
+  useEffect(() => {
+    Mixpanel = createMixpanelInstance(window.location.origin);
+    console.log("Initialized Mixpanel: ", Mixpanel);
+    if(Mixpanel){
+      Mixpanel.opt_out_tracking();
+    }
+  }, []);
+
   return (
     <>
       <Head>

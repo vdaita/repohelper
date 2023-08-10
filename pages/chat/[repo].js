@@ -63,7 +63,11 @@ export default function RepoChat(){
         // by default: should it be on true or false?
         Mixpanel = createMixpanelInstance(window.location.origin);
         console.log("Mixpanel: ", Mixpanel);
-        Mixpanel.track('Loaded chat', {source: window.location.origin});
+
+        if(Mixpanel){
+            Mixpanel.opt_out_tracking();
+            Mixpanel.track('Loaded chat', {source: window.location.origin});
+        }
 
         let wasFeedbackProvided = localStorage.getItem("feedbackProvided") ? true : false;
         let wasCanMixpanelAnswered = localStorage.getItem("canMixpanelAnswered") ? true : false;
@@ -76,7 +80,7 @@ export default function RepoChat(){
     }, []);
 
     let handleKeyPress = (event) => {
-        console.log(event);
+        // console.log(event);
         if(event.key === 'Enter') {
             console.log("Sending message on enter");
             sendMessage();
@@ -90,7 +94,9 @@ export default function RepoChat(){
         }
 
         try {
-            Mixpanel.track('Question asked', {});
+            if(Mixpanel){
+                Mixpanel.track('Question asked', {});
+            }
 
             setIsLoadingSources(true);
             let localMessages = [...messages, {role: 'user', content: messageInput.current.value}];
@@ -112,7 +118,9 @@ export default function RepoChat(){
             documentsRes = await documentsRes.json();
 
             if(documentsRes["error"]){
-                Mixpanel.track("Error retrieving documents", {});
+                if(Mixpanel){
+                    Mixpanel.track("Error retrieving documents", {});
+                }
                 setIsLoadingSources(false);
                 setError(true);
                 return;
@@ -144,7 +152,9 @@ export default function RepoChat(){
             append({role: 'system', content: sourcesString});
         } catch (err) {
             console.error(err);
-            Mixpanel.track("Non-documents-rpc error", {"error": err});
+            if(Mixpanel){
+                Mixpanel.track("Non-documents-rpc error", {"error": err});
+            }
             
             setIsLoadingSources(false);
             setError(true);
@@ -171,7 +181,10 @@ export default function RepoChat(){
     }
 
     let feedback = (type) => {
-        Mixpanel.track("Feedback provided", {"type": type});
+        if(Mixpanel){
+            console.log("There is Mixpanel, tracking feedback");
+            Mixpanel.track("Feedback provided", {"type": type});
+        }
         localStorage.setItem("feedbackProvided", true);
         notifications.show({
             title: 'Thank you!',
@@ -181,11 +194,14 @@ export default function RepoChat(){
     }
 
     let mixpanelResponse = (ans) => {
-        if(!ans){
-            Mixpanel.opt_out_tracking();
-        } else {
-            Mixpanel.opt_in_tracking();
+        if(Mixpanel){
+            if(!ans){
+                Mixpanel.opt_out_tracking();
+            } else {
+                Mixpanel.opt_in_tracking();
+            }
         }
+
         setCanMixpanelAnswered(true);
         localStorage.setItem("canMixpanelAnswered", true);
     }
@@ -197,12 +213,13 @@ export default function RepoChat(){
                 <Text size="xs">alpha</Text>
             </Card>
 
-
+            {/* 
+            We will out out of tracking users by default.
             {!canMixpanelAnswered && <Card shadow="sm" m="md" padding="lg" radius="md" withBorder>
-                We use Mixpanel to understand how people use this website and to track errors.
+                This website uses Mixpanel to understand user behavior.
                 <Button size="xs" m="xs" mcolor="green" onClick={() => mixpanelResponse(true)}>Sounds good!</Button>
-                <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Opt out.</Button>
-            </Card>}
+                <Button size="xs" m="xs" color="red" onClick={() => mixpanelResponse(true)}>Necessary data only.</Button>
+            </Card>} */}
 
             <Box mt="md">
                 {messages.length == 0 ? 'Your messages will show here' : ''}
@@ -242,6 +259,24 @@ export default function RepoChat(){
                     There was an error loading your response.
                 </Alert>}
                 {(isLoadingSources || isLoading) && <Loader m="sm"/>}
+
+                { /* do you like the service? */ }
+                {(!feedbackProvided && messages.length >= 3) && 
+                    <Card p="sm" m="md" style={{flex: 'flex-shrink', flexWrap: 'wrap', alignSelf: 'baseline'}} direction="row" withBorder shadow="sm" radius="md">
+                        <Box style={{flexDirection: 'row', flex: 'flex-shrink', flexWrap: 'wrap', alignSelf:'baseline'}}>
+                            <>
+                                Like this service?
+                                <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}} m='xs'  size="sm" color onClick={() => feedback("thumbs-up")}>
+                                👍
+                                </Button>
+                                <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}}  size="sm" onClick={() => feedback("thumbs-down")}>
+                                👎
+                                </Button>
+                            </>
+                        </Box>
+                    </Card>
+                }
+
                 <div ref={messagesFooter}/>
             </Box>
 
@@ -252,22 +287,7 @@ export default function RepoChat(){
                 <Button mx="sm" onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading || isLoadingSources}>Send</Button>
             </Box>
             
-            { /* do you like the service? */ }
-            {(!feedbackProvided && messages.length > 3) && 
-                <Card p="sm" m="sm" style={{flex: 'flex-shrink', flexWrap: 'wrap', alignSelf: 'baseline'}} direction="row" withBorder shadow="sm" radius="md">
-                    <Box style={{flexDirection: 'row', flex: 'flex-shrink', flexWrap: 'wrap', alignSelf:'baseline'}}>
-                        <>
-                            Like this service?
-                            <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}} m='xs'  size="sm" color onClick={() => feedback("thumbs-up")}>
-                            👍
-                            </Button>
-                            <Button style={{ backgroundColor: 'transparent', border: '1px solid lightGray'}}  size="sm" onClick={() => feedback("thumbs-down")}>
-                            👎
-                            </Button>
-                        </>
-                    </Box>
-                </Card>
-            }
+
         </Container>  
     );
 }
