@@ -58,55 +58,34 @@ export default async function POST(req: Request) {
   let messages = reqJson['messages'];
   let repo = reqJson['repo'];
 
-  console.log("Request bodies: ", reqJson, typeof reqJson, messages, repo);
+  if(repo == "mantine") {
+    console.log("Request bodies: ", reqJson, typeof reqJson, messages, repo);
 
-  console.log("Received request: ", reqJson);
-  let HF_API_KEY = process.env.HF_API_KEY;
- 
-  // const { stream, handlers } = LangChainStream()
-
-  let supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_KEY!);
-
-  // const embeddings = new HuggingFaceInferenceEmbeddings({
-  //   model: 'sentence-transformers/all-MiniLM-L6-v2',
-  //   apiKey: HF_API_KEY
-  // });
- 
-  let userQuery = messages.at(-1)["content"]; // later, when there are more messages, switch to messages.at(-1)
-  // let embeddedQuestion = await embedQueryHF(userQuery);
-  // let embeddedQuestion = await embeddings.embedQuery(userQuery);
-
-  let embeddedQuestion = await embedQueryOpenAI(userQuery);
-
-  // console.log("Finished embedding the question: ", embeddedQuestion);
-  console.log("Finished embedding the question");
-
-  let rpcQueryBody = {
-    query_embedding: embeddedQuestion,
-    match_count: 5,
-    match_threshold: 0.65,
-    repo: repo
-  };
-
-  // console.log("RPC query body: ", rpcQueryBody);
-
-  let { data: matches, error: matchError} = await supabaseClient.rpc('match_documents', rpcQueryBody)
-
-  // TODO: handle error
-  if(matchError){
-
-    console.log("Match error: ", matchError);
-
-    return new Response(JSON.stringify({"documents": [], "error": "Error"}));
+    console.log("Received request: ", reqJson);  
+    let supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_KEY!);
+  
+    let userQuery = messages.at(-1)["content"]; // later, when there are more messages, switch to messages.at(-1)
+    let embeddedQuestion = await embedQueryOpenAI(userQuery);
+  
+    // console.log("Finished embedding the question: ", embeddedQuestion);
+    console.log("Finished embedding the question");
+  
+    let rpcQueryBody = {
+      query_embedding: embeddedQuestion,
+      match_count: 5,
+      match_threshold: 0.65,
+      repo: repo
+    };
+    
+    let { data: matches, error: matchError} = await supabaseClient.rpc('match_documents', rpcQueryBody)
+  
+    if(matchError){
+      console.log("Match error: ", matchError);
+      return new Response(JSON.stringify({"documents": [], "error": "Error"}));
+    }
+      console.log("Documents matched!")
+    return new Response(JSON.stringify({"documents": matches}));
+  } else {
+    // make query to FastAPI backend which will then query NLPCloud
   }
-
-  // console.log("Matched documents: ", matches, matchError);
-  console.log("Documents matched!")
-
-  // let documentation = "";
-  // for(var i = 0; i < matches.length; i++){
-  //   documentation += matches[i]['content'];
-  // }
-
-  return new Response(JSON.stringify({"documents": matches}));
 }

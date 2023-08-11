@@ -14,6 +14,8 @@ import { notifications } from "@mantine/notifications";
 import createMixpanelInstance from '../../utils/Mixpanel';
 import supabaseClient from '../../utils/Supabase';
 
+// TOOD: refactor your "analytics"
+
 
 export default function RepoChat(){
     const router = useRouter();
@@ -34,7 +36,7 @@ export default function RepoChat(){
     const [shouldJump, setShouldJump] = useState(true);
 
     const {messages, setMessages, append, isLoading} = useChat({
-        api: "/api/chat_openai",
+        api: "/api/chat",
         onError: (err) => {
             console.error(err);
             setError(err);
