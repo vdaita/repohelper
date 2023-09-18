@@ -52,6 +52,7 @@ async function getSource(search_query: string) {
     });
 
     let searchResults = await serperResult.json();
+    console.log(searchResults);
 
     // let searchResults = [
     //     {
