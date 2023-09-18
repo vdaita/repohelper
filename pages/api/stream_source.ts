@@ -1,13 +1,10 @@
 import parseFromHtml from './../../utils/article-extractor/utils/parseFromHtml.js';
 
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-
 import { NextResponse } from 'next/server';
 import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown';
 
 let embeddingsModel = new OpenAIEmbeddings();
-let textSplitter = new RecursiveCharacterTextSplitter();
 
 function iteratorToStream(iterator: any) { // https://nextjs.org/docs/app/building-your-application/routing/route-handlers#streaming
     return new ReadableStream({
@@ -55,7 +52,7 @@ async function getSource(search_query: string) {
     });
 
     let searchResults = await serperResult.json();
-    // console.log(searchResults);
+    console.log(searchResults);
 
     // let searchResults = [
     //     {
@@ -103,22 +100,18 @@ async function* makeIterator(sourceString: string){
 
     // let contents = await content_response.json();
 
-    // let embeddings = [];
+    let embeddings = [];
     for(var i = 0; i < sites!.length; i++){
         try {
             let site_extracted = await getSite(sites![i].link);
-            let split_content = await textSplitter.splitText(site_extracted["content"]);
-            for(var j = 0; j < split_content.length; j++){
-                let temp_site = {...site_extracted};
-                let embedded = await getEmbeddings(split_content[j]);
-                // embeddings.push(embedded);
-                //@ts-ignore
-                temp_site["embeddings"] = embedded;
-                // contents[i]["embeddings"] = embedded;
-                yield encoder.encode(JSON.stringify(temp_site));
-            }
-
-
+            let embedded = await getEmbeddings(site_extracted["content"]);
+            embeddings.push(embedded);
+    
+            //@ts-ignore
+            site_extracted["embeddings"] = embedded;
+            // contents[i]["embeddings"] = embedded;
+    
+            yield encoder.encode(JSON.stringify(site_extracted));
         } catch (e) {
             console.error(e);
             yield encoder.encode(JSON.stringify({
