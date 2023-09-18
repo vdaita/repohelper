@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
-    "@extractus/article-extractor": "github:vdaita/article-extractor-edge",
     "@huggingface/agents": "^0.0.5",
     "@huggingface/hub": "^0.8.4",
     "@huggingface/inference": "^1.5.1",

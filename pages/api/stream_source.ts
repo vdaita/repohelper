@@ -26,7 +26,8 @@ async function getSource(search_query: string) {
     console.log("get_sources: ", search_query);
 
     let data = JSON.stringify({
-        "q": "site:" + search_query
+        "q": "site:" + search_query,
+        "num": 100
     });
 
     // let config = {
