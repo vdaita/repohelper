@@ -12,7 +12,6 @@ import {atomDark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import styles from '@/styles/Chat.module.css';
 import { notifications } from "@mantine/notifications";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import { extractFromHtml } from '@extractus/article-extractor';
 import { Document } from 'langchain/document';
 import BackendEmbeddings from './../utils/BackendEmbeddings';
 import rehypeRaw from 'rehype-raw'; // TODO: Find a way to sanitize the responses from the request or write custom to deal with details-summary
@@ -119,16 +118,20 @@ export default function RepoChat(){
                 break;
             }
             const chunkValue = decoder.decode(value);
-            console.log("Received value: ", chunkValue, done);
+            // console.log("Received value: ", chunkValue, done);
 
             try {
                 let newSource = JSON.parse(chunkValue);
                 setDocsLoadingState("Loaded " + newSource["title"]);
     
                 let content = newSource["content"];
-                console.log("Content: ", content);
+                // console.log("Content: ", content);
 
                 let embeddingsVector = newSource["embeddings"];
+                if(!embeddingsVector){
+                    continue;
+                }
+
                 newSource["content"] = undefined;
                 newSource["embeddings"] = undefined;
     
@@ -150,7 +153,7 @@ export default function RepoChat(){
         setSources(documents);
 
         let tempVectorStore = vectorStore;
-        if(vectorStore == undefined){
+        if(!vectorStore){
             tempVectorStore = await MemoryVectorStore.fromDocuments([], new BackendEmbeddings());
         }
         await tempVectorStore.addVectors(embeddingsVectors, documents);
@@ -176,7 +179,7 @@ export default function RepoChat(){
             setMessages(localMessages);
 
             messageInput.current.value = "";
-
+            
             const documents = await vectorStore.similaritySearch(localMessages.at(-1).content, 2); // get the top 4 articles
         
             console.log("Retrieved documents: ", documents);

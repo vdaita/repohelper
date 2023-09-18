@@ -27,7 +27,7 @@ export default async function handler(req: Request) {
     
         // right now everything should be submitted in the of a well formatted list
         const response = await openai.createChatCompletion({
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-3.5-turbo-16k',
             stream: true,
             messages: [
                 {role: "system", content: `You are a helpful coding assistant that uses Markdown to provide the best possible answer to the user based on your provided documentation and other knowledge. 

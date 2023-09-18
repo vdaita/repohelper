@@ -73,10 +73,10 @@ async function getSite(url: string) {
     })
     let contentString = await htmlContent.text();
     
-    console.log("HTML Content: ", contentString.substring(0, 100));
+    // console.log("HTML Content: ", contentString.substring(0, 100));
 
     let data = await parseFromHtml(contentString, url);
-    console.log(data);
+    // console.log(data);
 
     let markdownContent = NodeHtmlMarkdown.translate(data!["content"]);
     data!["content"] = markdownContent;
@@ -101,15 +101,25 @@ async function* makeIterator(sourceString: string){
 
     let embeddings = [];
     for(var i = 0; i < sites!.length; i++){
-        let site_extracted = await getSite(sites![i].link);
-        let embedded = await getEmbeddings(site_extracted["content"]);
-        embeddings.push(embedded);
-
-        //@ts-ignore
-        site_extracted["embeddings"] = embedded;
-        // contents[i]["embeddings"] = embedded;
-
-        yield encoder.encode(JSON.stringify(site_extracted));
+        try {
+            let site_extracted = await getSite(sites![i].link);
+            let embedded = await getEmbeddings(site_extracted["content"]);
+            embeddings.push(embedded);
+    
+            //@ts-ignore
+            site_extracted["embeddings"] = embedded;
+            // contents[i]["embeddings"] = embedded;
+    
+            yield encoder.encode(JSON.stringify(site_extracted));
+        } catch (e) {
+            console.error(e);
+            yield encoder.encode(JSON.stringify({
+                url: "https://example.com",
+                link: "https://example.com",
+                title: "Error loading source",
+                content: "Error loading source"
+            }));
+        }
     }
 }
 
