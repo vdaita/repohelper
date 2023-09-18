@@ -3,8 +3,12 @@ import parseFromHtml from './../../utils/article-extractor/utils/parseFromHtml.j
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { NextResponse } from 'next/server';
 import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter.js';
 
 let embeddingsModel = new OpenAIEmbeddings();
+// let textSplitter = new RecursiveCharacterTextSplitter({
+//     chunkSize: 20000
+// });
 
 function iteratorToStream(iterator: any) { // https://nextjs.org/docs/app/building-your-application/routing/route-handlers#streaming
     return new ReadableStream({
