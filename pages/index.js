@@ -74,14 +74,27 @@ export default function RepoChat(){
           'i'
         );
         return pattern.test(str);
-       }
+    }
 
-    let addSource = async() => {
+    let addSourceList = async(sourceUrls=sourceUrl) => {
+        let splitUrls = sourceUrls.split(",");
+        for(var i = 0; i < splitUrls.length; i++){
+            let strippedUrl = splitUrls[i].trim();
+            await addSource(strippedUrl);
+        }
+    }
 
+    let addSourceUser = async() => {
         if(!isUrlValid(sourceUrl)){
             setDocsLoadingState("Please use a valid URL");
             return;
         }
+        addSource(sourceUrl);
+    }
+
+    let addSource = async(sourceUrl=sourceUrl) => {
+
+
 
         setDocsLoadingState("loading");
         setIsLoadingSources(true);
@@ -246,10 +259,16 @@ export default function RepoChat(){
                 </Card>
 
                 <Card shadow="sm" m="lg" >
-                    <Text size="md">Add the URL of the library you want to chat with.</Text>
+                    <Text size="md">Add the URLs of the library you want to chat with.</Text>
                     <Text size="xs">Up to 100 pages will be loaded.</Text>
                     <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)}></TextInput>
-                    <Button mt="sm" onClick={() => addSource()}>Add</Button>
+
+                    <Flex direction='row' mt="sm">
+                        <Button variant="light" mr="xs" onClick={(e) => addSource("https://mantine.dev -site:https://v5.mantine.dev -site:https://v4.mantine.dev -site:https://v3.mantine.dev -site:https://v2.mantine.dev -site:https://v1.mantine.dev")}>Mantine Docs</Button>
+                        <Button variant="light" onClick={(e) => addSource("https://sdk.vercel.ai/docs")}>Vercel AI Docs</Button>
+                    </Flex>
+
+                    <Button mt="sm" onClick={() => addSourceUser()}>Add</Button>
                     {sources.map((item, index) => (
                         <Text>Document <i>{item.metadata["title"]}</i> added</Text>
                     ))}

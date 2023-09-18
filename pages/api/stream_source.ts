@@ -81,7 +81,7 @@ async function getSite(url: string) {
 
     let markdownContent = NodeHtmlMarkdown.translate(data!["content"]);
     data!["content"] = markdownContent;
-    Object.assign(data!, {link: url});
+    Object.assign(data!, {link: data!["links"][0]});
 
     return data!;
 }
