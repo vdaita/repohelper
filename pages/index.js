@@ -32,6 +32,7 @@ export default function RepoChat(){
     const [docsLoadingState, setDocsLoadingState] = useState("unloaded"); // unloaded, loading, loaded
 
     const [sources, setSources] = useState([]);
+    const [uniqueSources, setUniqueSources] = useState([]);
     const [sourceUrl, setSourceUrl] = useState("");
     
     const [shouldJump, setShouldJump] = useState(true);
@@ -132,7 +133,7 @@ export default function RepoChat(){
                 break;
             }
             const chunkValue = decoder.decode(value);
-            console.log("Received value: ", chunkValue, done);
+            // console.log("Received value: ", chunkValue, done);
 
             try {
                 let newSource = JSON.parse(chunkValue);
@@ -165,6 +166,10 @@ export default function RepoChat(){
         console.log("Documents: ", documents);
 
         setSources(documents);
+
+        const uniqueTitles = [...new Set( documents.map(obj => (`${obj.metadata["title"]} - ${obj.metadata["link"]}`))) ];
+        setUniqueSources(uniqueTitles);
+
 
         let tempVectorStore = vectorStore;
         if(!vectorStore){
@@ -264,17 +269,20 @@ export default function RepoChat(){
                     <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)}></TextInput>
 
                     <Flex direction='row' mt="sm">
-                        <Button variant="light" mr="xs" onClick={(e) => addSource("https://mantine.dev -site:https://v5.mantine.dev -site:https://v4.mantine.dev -site:https://v3.mantine.dev -site:https://v2.mantine.dev -site:https://v1.mantine.dev")}>Mantine Docs</Button>
-                        <Button variant="light" onClick={(e) => addSource("https://sdk.vercel.ai/docs")}>Vercel AI Docs</Button>
+                        {/* <Button variant="light" mr="xs" onClick={(e) => addSource("https://mantine.dev -site:https://v6.mantine.dev -site:https://v5.mantine.dev -site:https://v4.mantine.dev -site:https://v3.mantine.dev -site:https://v2.mantine.dev -site:https://v1.mantine.dev")}>Mantine Docs</Button> */}
+                        <Button variant="light" mr="xs" onClick={(e) => addSource("https://sdk.vercel.ai/docs")}>Vercel AI Docs</Button>
+                        {/* <Button variant="outline"><a style={{textDecoration: 'none', color: 'blue'}} href="repohelper-bpozmo750-vdaita.vercel.app" >Want the old Mantine document chat?</a></Button> */}
                     </Flex>
 
                     <Button mt="sm" onClick={() => addSourceUser()}>Add</Button>
-                    {sources.map((item, index) => (
-                        <Text>Document <i>{item.metadata["title"]}</i> added</Text>
+                    {/* <Button mt="sm" onClick={() => addSourceUser()}>Add with Recursive URL Loading</Button> */}
+
+                    {uniqueSources.map((item, index) => (
+                        <Text>Document <i>{item}</i> added</Text>
                     ))}
                     <div>
-                        <Text>{docsLoadingState === "unloaded" || sources.length === 0 ? "No documents have been loaded." : ""}</Text>
-                        <Text>{docsLoadingState === "loaded" ? "Your documents have been loaded." : ""}</Text>
+                        <Text>{(docsLoadingState === "unloaded" || sources.length === 0) && (!docsLoadingState === "loading") ? "No documents have been loaded." : ""}</Text>
+                        <Text>{docsLoadingState === "loaded" && sources.length > 0 ? "Your documents have been loaded." : ""}</Text>
                         <Text>{docsLoadingState === "loading" ? "Your documents are loading." : ""}</Text>
                         <Text>{docsLoadingState === "error" ? "There was an error loading your documents. " : ""}</Text>
                         <Text>{docsLoadingState[0] === docsLoadingState[0].toUpperCase() ? docsLoadingState : ""}</Text>
@@ -284,7 +292,7 @@ export default function RepoChat(){
                 </Card>
 
                 <Box mt="md">
-                    {messages.length == 0 ? 'Your messages will show here' : ''}
+                    <Text color='gray'> {messages.length == 0 ? 'Your messages will show here' : ''} </Text>
                     {messages.map((item, index) => (
                         <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
                             <Badge variant="gradient" gradient={genGradient(item.role)}> 
