@@ -115,14 +115,15 @@ export default function RepoChat(){
             console.log(value, doneReading);
             done = doneReading;
             if(doneReading){
+                console.log("Done reading: ", value, doneReading);
                 break;
             }
             const chunkValue = decoder.decode(value);
-            // console.log("Received value: ", chunkValue, done);
+            console.log("Received value: ", chunkValue, done);
 
             try {
                 let newSource = JSON.parse(chunkValue);
-                setDocsLoadingState("Loaded " + newSource["title"]);
+                setDocsLoadingState("Loaded " + newSource["title"] + " - " + newSource["link"]);
     
                 let content = newSource["content"];
                 // console.log("Content: ", content);
