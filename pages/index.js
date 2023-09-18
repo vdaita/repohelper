@@ -264,7 +264,7 @@ export default function RepoChat(){
                     <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)}></TextInput>
 
                     <Flex direction='row' mt="sm">
-                        <Button variant="light" mr="xs" onClick={(e) => addSource("https://mantine.dev -site:https://v5.mantine.dev -site:https://v4.mantine.dev -site:https://v3.mantine.dev -site:https://v2.mantine.dev -site:https://v1.mantine.dev")}>Mantine Docs</Button>
+                        <Button variant="light" mr="xs" onClick={(e) => window.location.href += "/chat/mantine"}> Mantine v7 Docs </Button>
                         <Button variant="light" onClick={(e) => addSource("https://sdk.vercel.ai/docs")}>Vercel AI Docs</Button>
                     </Flex>
 
