@@ -1,9 +1,11 @@
 import parseFromHtml from './../../utils/article-extractor/utils/parseFromHtml.js';
+import { JSDOM } from 'jsdom';
+import { convert } from "html-to-text";
 
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { NextResponse } from 'next/server';
 import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter.js';
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
 let embeddingsModel = new OpenAIEmbeddings();
 // let textSplitter = new RecursiveCharacterTextSplitter({
@@ -56,7 +58,7 @@ async function getSource(search_query: string) {
     });
 
     let searchResults = await serperResult.json();
-    console.log(searchResults);
+    // console.log(searchResults);
 
     // let searchResults = [
     //     {
@@ -79,13 +81,32 @@ async function getSite(url: string) {
     let contentString = await htmlContent.text();
     
     // console.log("HTML Content: ", contentString.substring(0, 100));
-
-    let data = await parseFromHtml(contentString, url);
+    let data;
+    // try {
+    data = await parseFromHtml(contentString, url);
     // console.log(data);
 
     let markdownContent = NodeHtmlMarkdown.translate(data!["content"]);
     data!["content"] = markdownContent;
+    // console.log(markdownContent);
     Object.assign(data!, {link: data!["links"][0]});
+    // } catch (e) {
+    //     console.log("Switched over to html2text");
+    //     data = {
+    //         url: url,
+    //         link: url,
+    //         content: "",
+    //         title: ""
+    //     }
+
+    //     data!["title"] = url;
+    //     data!["content"] = convert(contentString, {
+    //         wordwrap: 130
+    //     });
+    // }
+
+
+
 
     return data!;
 }
@@ -104,18 +125,32 @@ async function* makeIterator(sourceString: string){
 
     // let contents = await content_response.json();
 
-    let embeddings = [];
+    // let embeddings = [];
+    let textSplitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 30000
+    });
+
     for(var i = 0; i < sites!.length; i++){
         try {
             let site_extracted = await getSite(sites![i].link);
-            let embedded = await getEmbeddings(site_extracted["content"]);
-            embeddings.push(embedded);
+            // splitting text into parts
+            let split_content = await textSplitter.splitText(site_extracted["content"]);
+
+            console.log("   Split " + site_extracted["url"] + " into " + split_content.length + " pieces");
+            for(var j = 0; j < split_content.length; j++){
+                let embedded = await getEmbeddings(split_content[j]);
+                let split_site_extracted = {...site_extracted};
+
+                // embeddings.push(embedded);
     
-            //@ts-ignore
-            site_extracted["embeddings"] = embedded;
-            // contents[i]["embeddings"] = embedded;
+                //@ts-ignore
+                split_site_extracted["embeddings"] = embedded;
+                split_site_extracted["content"] = split_content;
+                // contents[i]["embeddings"] = embedded;
     
-            yield encoder.encode(JSON.stringify(site_extracted));
+                yield encoder.encode(JSON.stringify(split_site_extracted));
+            }
+
         } catch (e) {
             console.error(e);
             yield encoder.encode(JSON.stringify({
