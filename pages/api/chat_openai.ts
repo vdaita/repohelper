@@ -1,49 +1,82 @@
 import { StreamingTextResponse, OpenAIStream, LangChainStream, Message } from 'ai'
-import { Configuration, OpenAIApi } from 'openai-edge';
-// import { ChatOpenAI } from 'langchain/chat_models/openai'
-import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
-import { Replicate } from 'langchain/llms/replicate';
-import { HuggingFaceInference } from 'langchain/llms/hf';
-import { AIMessage, HumanMessage, SystemMessage } from 'langchain/schema'
-import { createClient } from '@supabase/supabase-js';
-import FrontendMessage from '../../utils/FrontendMessage';
-import { RetrievalQAChain } from 'langchain/chains';
+import OpenAI from 'openai';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import { convert } from 'html-to-text';
+import { PromptTemplate } from 'langchain/prompts';
+import { loadQAMapReduceChain } from 'langchain/chains';
+import { TokenTextSplitter } from 'langchain/text_splitter';
+import { Document } from 'langchain/document';
+import { ChatOpenAI } from 'langchain/chat_models/openai';
 
-const config = new Configuration({
+const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
-  });
-  const openai = new OpenAIApi(config);
+})
 
-export default async function handler(req: Request) {
+function iteratorToStream(iterator: any) {
+    return new ReadableStream({
+      async pull(controller) {
+        const { value, done } = await iterator.next()
+   
+        if (done) {
+          controller.close()
+        } else {
+          controller.enqueue(value)
+        }
+      },
+    })
+}
 
-    // console.log("handler request", req, req.body);
-    console.log("Handler request");
+async function get_website_content(website: string, question: string){
+    const website_result = await fetch(website);
+    const content = await website_result.text();
 
-    let {messages, repo, documents} = await req.json();
-
-    // console.log("Received Chat OpenAI request from frontend: ", messages, documents, repo);
-    let trimmedMessages = messages.slice(-4);
-    let documentsString = "";
-    for(var i = 0; i < documents.length; i++){
-        documentsString += documents[i]["content"];
-        documentsString += "\n";
-    }
-    
-    // right now everything should be submitted in the of a well formatted list
-    const response = await openai.createChatCompletion({
-        model: 'gpt-3.5-turbo',
-        stream: true,
-        messages: [
-            {role: "system", content: `You are a helpful coding assistant that uses Markdown to provide the best possible answer to the user based on your provided documentation and other knowledge. 
-            Your answers should be focused on using the ${repo} library and tools. If you do not have the information required to provide an answer, state that you do not have the information required to produce a response.
-            Do not provide any answers or information that cannot be supported by the documentation provided. Be concise.`}, 
-            {role: "system", content: `Documentation: ${documentsString}`},
-            ...trimmedMessages
-        ]
+    const splitter = new TokenTextSplitter({
+        chunkSize: 10000,
+        chunkOverlap: 1000
+    });
+    const contentDocument = new Document({
+        pageContent: content
     });
 
-    const stream = OpenAIStream(response);
-    return new StreamingTextResponse(stream);
+    let splitDocuments = splitter.splitDocuments([contentDocument]);
+
+    const llm = new ChatOpenAI();
+
+    const summarizationChain = loadQAMapReduceChain(llm);
+
+    let response = await summarizationChain.call({
+        input_documents: splitDocuments,
+        question: question
+    });
+
+    console.log(response);
+
+    return JSON.stringify(response);
+}
+   
+const encoder = new TextEncoder()
+
+async function* makeIterator() {
+    const stream = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo-1106',
+        messages: [],
+        stream: true
+    });
+
+    for await (const chunk of stream) {
+        if(chunk.choices[0]?.delta?.function_call){
+            // If there is a call to retrieve more information from a website, retrieve it and return it to the LLM.
+        }
+        console.log("Printing out chunk: ", chunk.choices[0]?.delta?.content); 
+        yield encoder.encode(chunk.choices[0]?.delta?.content || '');
+    }
+}
+
+export async function GET() {
+    const iterator = makeIterator()
+    const stream = iteratorToStream(iterator)
+
+    return new Response(stream)
 }
 
 export const runtime = 'edge';

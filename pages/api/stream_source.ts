@@ -6,11 +6,13 @@ import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { NextResponse } from 'next/server';
 import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown';
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
+import { Document } from 'langchain/document';
+import Sitemapper from 'sitemapper';
+import fetch from 'node-fetch';
 
 let embeddingsModel = new OpenAIEmbeddings();
-// let textSplitter = new RecursiveCharacterTextSplitter({
-//     chunkSize: 20000
-// });
 
 function iteratorToStream(iterator: any) { // https://nextjs.org/docs/app/building-your-application/routing/route-handlers#streaming
     return new ReadableStream({
@@ -28,7 +30,7 @@ function iteratorToStream(iterator: any) { // https://nextjs.org/docs/app/buildi
 
 const encoder = new TextEncoder();
 
-async function getSource(search_query: string) {
+async function getSourceGoogle(search_query: string) {
     console.log("get_sources: ", search_query);
 
     let data = JSON.stringify({
@@ -36,17 +38,6 @@ async function getSource(search_query: string) {
         "num": 100
     });
 
-    // let config = {
-    //     method: 'post',
-    //     url: 'https://google.serper.dev/search',
-    //     headers: {
-    //         'X-API-KEY': process.env.SERPER_API_KEY,
-    //         'Content-Type': 'application/json'
-    //     },
-    //     data: data
-    // };
-
-    // let searchResults = await axios(config);
     const headers: HeadersInit = {
         'X-API-KEY': process.env.SERPER_API_KEY!,
         'Content-Type': 'application/json'
@@ -57,19 +48,29 @@ async function getSource(search_query: string) {
         body: data
     });
 
-    let searchResults = await serperResult.json();
-    // console.log(searchResults);
+    let searchResults: any = await serperResult.json();
 
-    // let searchResults = [
-    //     {
-    //         "title": "Test",
-    //         "link": "https://docs.mixpanel.com/docs/getting-started/what-is-mixpanel"
-    //     }
-    // ]
-    // console.log(JSON.stringify(searchResults.data));
+    let links = [];
+    for(var i = 0; i < searchResults["organic"]; i++){
+        links.push(searchResults["organic"][i]["link"]);
+    }
 
-    // return searchResults;
-    return searchResults["organic"];   
+    console.log("Returning links: ", links);
+
+    return links;
+}
+
+async function getSourceSitemap(sitemap: string, filterURLs: string){
+    const sitemapper = new Sitemapper({
+        url: sitemap,
+        timeout: 15000
+    });
+    try {
+        const { sites } = await sitemapper.fetch();
+        return sites;
+    } catch (error) {
+        return {"error": error};
+    }
 }
 
 async function getSite(url: string) {
@@ -90,24 +91,6 @@ async function getSite(url: string) {
     data!["content"] = markdownContent;
     // console.log(markdownContent);
     Object.assign(data!, {link: data!["links"][0]});
-    // } catch (e) {
-    //     console.log("Switched over to html2text");
-    //     data = {
-    //         url: url,
-    //         link: url,
-    //         content: "",
-    //         title: ""
-    //     }
-
-    //     data!["title"] = url;
-    //     data!["content"] = convert(contentString, {
-    //         wordwrap: 130
-    //     });
-    // }
-
-
-
-
     return data!;
 }
 
@@ -115,49 +98,43 @@ async function getEmbeddings(content: string){
     return embeddingsModel.embedQuery(content);
 }
 
-async function* makeIterator(sourceString: string){
-    let sites = await getSource(sourceString);
 
-    // let content_response = await fetch('/api/extract_content', {
-    //     method: 'POST',
-    //     body: JSON.stringify(sites)
-    // });
-
-    // let contents = await content_response.json();
-
-    // let embeddings = [];
+async function* makeIterator(sites: string[], sourceName: string){ // set an automatic limit to 200 webpages - otherwise, split it into chunks.
     let textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 30000
+        chunkSize: 3000
     });
-
     for(var i = 0; i < sites!.length; i++){
         try {
-            let site_extracted = await getSite(sites![i].link);
+            let siteExtracted = await getSite(sites[i]);
+            let document = new Document({
+                pageContent: siteExtracted["content"],
+                metadata: {
+                    url: sites![i].link,
+                    source_name: sourceName
+                }
+            })
             // splitting text into parts
-            let split_content = await textSplitter.splitText(site_extracted["content"]);
+            let splitContent = await textSplitter.splitDocuments([document]);
+            console.log("   Split " + siteExtracted["url"] + " into " + splitContent.length + " pieces");
 
-            console.log("   Split " + site_extracted["url"] + " into " + split_content.length + " pieces");
-            for(var j = 0; j < split_content.length; j++){
-                let embedded = await getEmbeddings(split_content[j]);
-                let split_site_extracted = {...site_extracted};
 
-                // embeddings.push(embedded);
-    
-                //@ts-ignore
-                split_site_extracted["embeddings"] = embedded;
-                split_site_extracted["content"] = split_content;
-                // contents[i]["embeddings"] = embedded;
-    
-                yield encoder.encode(JSON.stringify(split_site_extracted));
+            for(var j = 0; j < splitContent.length; j++){
+                let embeddedContent = await getEmbeddings(splitContent[j].pageContent);
+                let extraction = {
+                    pageContent: document.pageContent,
+                    metadata: document.metadata
+                }
+                yield encoder.encode(JSON.stringify({
+                    embeddings: embeddedContent,
+                    document: extraction
+                }));
             }
-
         } catch (e) {
             console.error(e);
             yield encoder.encode(JSON.stringify({
-                url: "https://example.com",
-                link: "https://example.com",
-                title: "Error loading source",
-                content: "Error loading source"
+                embeddings: [],
+                pageContent: null,
+                metadata: null
             }));
         }
     }
@@ -167,8 +144,19 @@ export const runtime = 'edge';
 
 export default async function POST(req: Request){
     let body = await req.json();
-    const iterator = makeIterator(body["url"]);
-    const stream = iteratorToStream(iterator);
 
-    return new Response(stream);
+    let filteredUrls = body["filter_urls"].split("\n");
+    for(var i = 0; i < filteredUrls[i].length; i++){
+        filteredUrls[i] = filteredUrls[i].trim();
+    }
+
+    const sites = await getSourceSitemap(body["sitemap_url"], filteredUrls);
+
+    if("error" in sites){
+        throw sites;
+    } else {
+        const iterator = makeIterator(sites, body["name"]);
+        const stream = iteratorToStream(iterator);
+        return new Response(stream);
+    }
 }
