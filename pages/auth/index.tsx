@@ -18,6 +18,7 @@ const LoginPage = () => {
     function redirect() {
         router.push("/chat")
     }
+    console.log("From /auth, the user is: ", user);
     // Only run query once user is logged in.
     if (user) redirect()
   }, [user])

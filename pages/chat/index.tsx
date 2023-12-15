@@ -12,6 +12,9 @@ import {atomDark} from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import styles from '@/styles/Chat.module.css';
 import { notifications } from "@mantine/notifications";
 import axios from 'axios';
+import Link from 'next/link';
+import SourcesManager from './sources';
+import { useUser } from '@supabase/auth-helpers-react';
 
 export default function RepoChat(){
     const router = useRouter();
@@ -27,6 +30,11 @@ export default function RepoChat(){
     
     const [shouldJump, setShouldJump] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
+
+    const [sourceVisibility, setSourceVisibility] = useState(false);
+
+    const user = useUser();
+
     useEffect(() => {
     }, []);
 
@@ -147,15 +155,15 @@ export default function RepoChat(){
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
+            
             <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2}} className={styles.container}>
                 <Card shadow="sm" style={{position: 'sticky', top: 0, background: 'white', zIndex: 100}}>
-                    <Text size="lg" className={styles.container}>Chat with documentation</Text>
+                    <Text size="lg" className={styles.container}>You are logged in, {user?.email}</Text>
                     <Text size="xs">alpha</Text>
                 </Card>
-
-                <Box m="md">
-
-                </Box>
+                
+                <Button onClick={() => setSourceVisibility(!sourceVisibility)}>{sourceVisibility ? "Hide" : "Show"} sources</Button>
+                {sourceVisibility && <SourcesManager/>}
 
                 <Box mt="md">
                     {messages.length == 0 ? 'Your messages will show here' : ''}

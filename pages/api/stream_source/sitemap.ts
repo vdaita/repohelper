@@ -1,18 +1,14 @@
-import parseFromHtml from './../../utils/article-extractor/utils/parseFromHtml.js';
-import { JSDOM } from 'jsdom';
-import { convert } from "html-to-text";
-
+import parseFromHtml from '../../../utils/article-extractor/utils/parseFromHtml.js';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { NextResponse } from 'next/server';
-import { NodeHtmlMarkdown, NodeHtmlMarkdownOptions } from 'node-html-markdown';
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
-import { createClient } from '@supabase/supabase-js';
 import { Document } from 'langchain/document';
-import Sitemapper from 'sitemapper';
-import fetch from 'node-fetch';
+import { convert } from 'html-to-text';
+import Replicate from "replicate";
 
 let embeddingsModel = new OpenAIEmbeddings();
+const replicate = new Replicate({
+    auth: process.env.REPLICATE_API_KEY!
+});
 
 function iteratorToStream(iterator: any) { // https://nextjs.org/docs/app/building-your-application/routing/route-handlers#streaming
     return new ReadableStream({
@@ -60,17 +56,41 @@ async function getSourceGoogle(search_query: string) {
     return links;
 }
 
-async function getSourceSitemap(sitemap: string, filterURLs: string){
-    const sitemapper = new Sitemapper({
-        url: sitemap,
-        timeout: 15000
-    });
-    try {
-        const { sites } = await sitemapper.fetch();
-        return sites;
-    } catch (error) {
-        return {"error": error};
+function findStringsBetweenLocTags(inputText: string) {
+    const regex = /<loc>(.*?)<\/loc>/g;
+    const matches = [];
+    let match;
+  
+    while ((match = regex.exec(inputText)) !== null) {
+      matches.push(match[1]);
     }
+  
+    return matches;
+  }
+
+async function getSourceSitemap(sitemap: string, filterURLs: string){
+    
+    const websiteResult = await fetch(sitemap);
+    const websiteContent = await websiteResult.text();
+
+    const urls = findStringsBetweenLocTags(websiteContent);
+    const filteredUrls: string[] = [];
+    
+    for(var i = 0; i < urls.length; i++){
+        let flag = false;
+
+        for(var j = 0; j < urls.length; j++){
+            if(urls[i].includes(filterURLs[j]) || filterURLs.length === 0){
+                flag = true
+            }
+        }
+        
+        if(flag){
+            filteredUrls.push(urls[i]);
+        }
+    }
+
+    return filteredUrls;
 }
 
 async function getSite(url: string) {
@@ -87,15 +107,21 @@ async function getSite(url: string) {
     data = await parseFromHtml(contentString, url);
     // console.log(data);
 
-    let markdownContent = NodeHtmlMarkdown.translate(data!["content"]);
-    data!["content"] = markdownContent;
+    // let markdownContent = NodeHtmlMarkdown.translate(data!["content"]);
+    data!["content"] = convert(data!["content"], {});
     // console.log(markdownContent);
-    Object.assign(data!, {link: data!["links"][0]});
     return data!;
 }
 
 async function getEmbeddings(content: string){
-    return embeddingsModel.embedQuery(content);
+    const model = "nateraw/bge-large-en-v1.5:9cf9f015a9cb9c61d1a2610659cdac4a4ca222f2d3707a68517b18c198a9add1";
+    const input = {
+        texts: JSON.stringify([content])
+    }
+    const output = await replicate.run(model, { input })
+    
+    //@ts-ignore
+    return output[0]; // based on docs, it will be an array of arrays.
 }
 
 
@@ -109,30 +135,28 @@ async function* makeIterator(sites: string[], sourceName: string){ // set an aut
             let document = new Document({
                 pageContent: siteExtracted["content"],
                 metadata: {
-                    url: sites![i].link,
+                    url: sites[i],
                     source_name: sourceName
                 }
             })
             // splitting text into parts
-            let splitContent = await textSplitter.splitDocuments([document]);
-            console.log("   Split " + siteExtracted["url"] + " into " + splitContent.length + " pieces");
+            let splitDocuments = await textSplitter.splitDocuments([document]);
+            console.log("   Split " + siteExtracted["url"] + " into " + splitDocuments.length + " pieces");
 
 
-            for(var j = 0; j < splitContent.length; j++){
-                let embeddedContent = await getEmbeddings(splitContent[j].pageContent);
-                let extraction = {
-                    pageContent: document.pageContent,
-                    metadata: document.metadata
-                }
+            for(var j = 0; j < splitDocuments.length; j++){
+                let embeddedContent = await getEmbeddings(splitDocuments[j].pageContent);
+
                 yield encoder.encode(JSON.stringify({
-                    embeddings: embeddedContent,
-                    document: extraction
+                    embedding: embeddedContent,
+                    content: splitDocuments[j].pageContent,
+                    metadata: splitDocuments[j].metadata
                 }));
             }
         } catch (e) {
             console.error(e);
             yield encoder.encode(JSON.stringify({
-                embeddings: [],
+                embedding: [],
                 pageContent: null,
                 metadata: null
             }));
@@ -145,12 +169,17 @@ export const runtime = 'edge';
 export default async function POST(req: Request){
     let body = await req.json();
 
-    let filteredUrls = body["filter_urls"].split("\n");
-    for(var i = 0; i < filteredUrls[i].length; i++){
-        filteredUrls[i] = filteredUrls[i].trim();
+    let filteredUrls = body["filter_urls"].split(",");
+    let refilteredUrls = [];
+    for(var i = 0; i < filteredUrls.length; i++){
+        let currUrl = filteredUrls[i].trim();
+        if(currUrl > 0){
+            refilteredUrls.push(currUrl);
+        }
     }
 
     const sites = await getSourceSitemap(body["sitemap_url"], filteredUrls);
+    // console.log("Got sitemaps: ", sites);
 
     if("error" in sites){
         throw sites;
