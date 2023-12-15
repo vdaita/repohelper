@@ -6,8 +6,7 @@ let createMixpanelInstance = (origin) => {
     mixpanel.init(process.env.NEXT_PUBLIC_MIXPANEL_TOKEN, {
         api_host: origin + "/mp",
         debug: !isProd,
-        track_pageview: true,
-        opt_out_tracking_by_default: true
+        track_pageview: true
     });
     return mixpanel;
 }
