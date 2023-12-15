@@ -20,9 +20,13 @@ const lc_llm = new ChatOpenAI({
 const embeddings = new ReplicateEmbeddings({});
 const supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-const GENERATE_MESSAGES_PROMPT = ` 
+const GENERATE_SUBQUESTIONS_PROMPT = ` 
 You a question-answering assistant. Based on the user's current query and the previous chat history, generate three subquestions that can be asked against a vectorstore.
 These three subquestions should be as specific as possible. Separate these questions with newlines and output nothing else.
+`;
+
+const GENERATE_COMBINED_QUESTION_PROMPT = `
+Using the chat history and the current query, generate a single question that sums up the entirety of the question the user is asking.
 `;
 
 function iteratorToStream(iterator: any) {
@@ -78,8 +82,18 @@ async function* makeIterator(messages: any[], uid: string) {
 
     let currentQuestion = messages.at(-1)["content"];
 
-    let messageHistory = `Chat history: \n ${prevConvo} \n \n \n Current question: ${currentQuestion} \n \n Subquestions:`;
-    let subquestions = (await lc_llm.call([new SystemMessage({content: GENERATE_MESSAGES_PROMPT}), new HumanMessage({content: messageHistory})])).content;
+    let messageHistory = `Chat history: \n ${prevConvo} \n \n \n Current question: ${currentQuestion}`;
+    let subquestions = (await lc_llm.call([
+        new SystemMessage({content: GENERATE_SUBQUESTIONS_PROMPT}), 
+        new HumanMessage({content: `${messageHistory} \n \n Subquestions:`})
+    ])).content;
+
+    let combinedQuestion = (await lc_llm.call([
+        new SystemMessage({content: GENERATE_COMBINED_QUESTION_PROMPT}),
+        new HumanMessage({content: `${messageHistory} \n \n Combined question: `})
+    ])).content;
+
+    console.log("Generated combined question: ", combinedQuestion);
 
     console.log("Generated questions: ", subquestions);
     yield encoder.encode(`**Generated questions:** ${subquestions} \n`);
@@ -113,14 +127,24 @@ async function* makeIterator(messages: any[], uid: string) {
                 uniqueDocuments.push(newDocuments[j]);
             }
         }
-
+        console.log("Adding unique documents: ", uniqueDocuments);
         documents = [...documents, ...uniqueDocuments];
     }
 
     let formattedDocumentationString = ""; 
+    for(var i = 0; i < documents.length; i++){
+        if(documents[i].metadata.hasOwnProperty('url')){
+            formattedDocumentationString += `\n Document from source ${documents[i].metadata["url"]}: \n ${documents[i].pageContent}`
+        }
+        formattedDocumentationString += `\n Document: ${documents[i].pageContent}`
+    }
 
     // get the relevant documents
-    const stream = await lc_llm.stream([])
+    const stream = await lc_llm.stream([
+        new SystemMessage("You are a helpful programming assistant that analyzes documentation and provides the most relevant response according to the user's query. If you don't know how to solve a problem, say 'I don't know.'"),
+        new HumanMessage(formattedDocumentationString.length > 0 ? `Documentation: \n ${formattedDocumentationString}` : "There is no documentation available for this question."),
+        new HumanMessage(`Question: ${combinedQuestion}`)
+    ])
 
     for await (const chunk of stream) {
         console.log("Printing out chunk: ", chunk?.content); 
@@ -129,9 +153,9 @@ async function* makeIterator(messages: any[], uid: string) {
 }
 
 export async function POST(req: Request) {
-    let body = req.json();
+    let body = await req.json();
     
-    const iterator = makeIterator()
+    const iterator = makeIterator(body.messages, body.uid)
     const stream = iteratorToStream(iterator)
 
     return new Response(stream)
