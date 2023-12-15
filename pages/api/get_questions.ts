@@ -53,7 +53,6 @@ type ChainInput = {
   chat_history: string;
 };
 
-
 export default async function POST(req: Request) {
   let reqJson = await req.json();
   let messages = reqJson.messages;
