@@ -33,6 +33,7 @@ export default function RepoChat(){
 
     const [sources, setSources] = useState([]);
     const [sourceUrl, setSourceUrl] = useState("");
+    const [filterUrls, setFilterURLs] = useState("");
     
     const [shouldJump, setShouldJump] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
@@ -94,25 +95,34 @@ export default function RepoChat(){
 
     let addSource = async(sourceUrl=sourceUrl) => {
 
-
-
         setDocsLoadingState("loading");
         setIsLoadingSources(true);
 
         let res = await fetch("/api/stream_source", {
             method: "POST",
             body: JSON.stringify({
-                url: sourceUrl
+                sitemap_url: sourceUrl,
+                filter_urls: filterUrls
             })
         });
 
         if(!res.ok) {
-            setDocsLoadingState("error");
+            console.log("There was an error loading the document")
+            notifications.show({
+                title: "There was an error loading all of your documents.",
+                message: "Please try again",
+                color: 'red'
+            });
         }
 
         const data = res.body;
         console.log(data);
         if(!data){
+            notifications.show({
+                title: "There was an error loading all of your documents.",
+                message: "Please try again",
+                color: 'red'
+            });
             return;
         }
 
@@ -132,11 +142,11 @@ export default function RepoChat(){
                 break;
             }
             const chunkValue = decoder.decode(value);
-            console.log("Received value: ", chunkValue, done);
+            // console.log("Received value: ", chunkValue, done);
 
             try {
                 let newSource = JSON.parse(chunkValue);
-                setDocsLoadingState("Loaded " + newSource["title"] + " - " + newSource["link"]);
+                setDocsLoadingState("Loaded " + newSource["link"]);
     
                 let content = newSource["content"];
                 // console.log("Content: ", content);
@@ -259,22 +269,16 @@ export default function RepoChat(){
                 </Card>
 
                 <Card shadow="sm" m="lg" >
-                    <Text size="md">Add the URLs of the library you want to chat with.</Text>
-                    <Text size="xs">Up to 100 pages will be loaded.</Text>
-                    <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)}></TextInput>
-
-                    <Flex direction='row' mt="sm">
-                        <Button variant="light" mr="xs" onClick={(e) => window.location.href += "/chat/mantine"}> Mantine v7 Docs </Button>
-                        <Button variant="light" onClick={(e) => addSource("https://sdk.vercel.ai/docs")}>Vercel AI Docs</Button>
-                    </Flex>
-
+                    <Text size="md">Add the sitemap for the website you want to load. </Text>
+                    <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="Example: https://nextjs.org/sitemap.xml"></TextInput>
+                    <Textarea value={filterUrls} onChange={(e) => setFilterURLs(e.target.value)} placeholder="Filter for specific subdirectories, separated by commas: https://nextjs.org/docs/"></Textarea>
                     <Button mt="sm" onClick={() => addSourceUser()}>Add</Button>
                     {sources.map((item, index) => (
-                        <Text>Document <i>{item.metadata["title"]}</i> added</Text>
+                        <Text>Document <i>{item.metadata["link"]}</i> added</Text>
                     ))}
                     <div>
                         <Text>{docsLoadingState === "unloaded" || sources.length === 0 ? "No documents have been loaded." : ""}</Text>
-                        <Text>{docsLoadingState === "loaded" ? "Your documents have been loaded." : ""}</Text>
+                        <Text>{docsLoadingState === "loaded" ? "Finished loading." : ""}</Text>
                         <Text>{docsLoadingState === "loading" ? "Your documents are loading." : ""}</Text>
                         <Text>{docsLoadingState === "error" ? "There was an error loading your documents. " : ""}</Text>
                         <Text>{docsLoadingState[0] === docsLoadingState[0].toUpperCase() ? docsLoadingState : ""}</Text>
