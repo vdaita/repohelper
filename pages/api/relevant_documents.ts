@@ -73,8 +73,6 @@ export default async function POST(req: Request) {
   // });
  
   let userQuery = messages.at(-1)["content"]; // later, when there are more messages, switch to messages.at(-1)
-  // let embeddedQuestion = await embedQueryHF(userQuery);
-  // let embeddedQuestion = await embeddings.embedQuery(userQuery);
 
   let embeddedQuestion = await embedQueryOpenAI(userQuery);
 

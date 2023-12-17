@@ -121,7 +121,7 @@ async function getEmbeddings(content: string){
 
 async function* makeIterator(sites: string[], sourceName: string){ // set an automatic limit to 200 webpages - otherwise, split it into chunks.
     let textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 3000
+        chunkSize: 2000
     });
     for(var i = 0; i < sites!.length; i++){
         try {
@@ -136,7 +136,6 @@ async function* makeIterator(sites: string[], sourceName: string){ // set an aut
             // splitting text into parts
             let splitDocuments = await textSplitter.splitDocuments([document]);
             console.log("   Split " + siteExtracted["url"] + " into " + splitDocuments.length + " pieces");
-
 
             for(var j = 0; j < splitDocuments.length; j++){
                 let embeddedContent = await getEmbeddings(splitDocuments[j].pageContent);
@@ -178,7 +177,8 @@ export default async function POST(req: Request){
     // console.log("Got sitemaps: ", sites);
 
     if("error" in sites){
-        throw sites;
+        console.log("There is an error in sites.");
+        throw "error";
     } else {
         const iterator = makeIterator(sites, body["name"]);
         const stream = iteratorToStream(iterator);

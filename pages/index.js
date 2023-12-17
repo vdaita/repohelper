@@ -14,9 +14,11 @@ import { notifications } from "@mantine/notifications";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { Document } from 'langchain/document';
 import BackendEmbeddings from './../utils/BackendEmbeddings';
+import { FakeEmbeddings } from "langchain/embeddings/fake";
 import rehypeRaw from 'rehype-raw'; // TODO: Find a way to sanitize the responses from the request or write custom to deal with details-summary
 import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
 
+import rnvcembeddings from "./../utils/react-native-vector-camera-embeddings.json";
 
 export default function RepoChat(){
     const router = useRouter();
@@ -56,6 +58,8 @@ export default function RepoChat(){
         }
     });
 
+
+
     let handleKeyPress = (event) => {
         // console.log(event);
         if(event.key === 'Enter') {
@@ -86,14 +90,72 @@ export default function RepoChat(){
     }
 
     let addSourceUser = async() => {
+        if(sourceUrl.endsWith(".json")){
+            addSourceJson(sourceUrl);
+        }
+
         if(!isUrlValid(sourceUrl)){
             setDocsLoadingState("Please use a valid URL");
             return;
         }
-        addSource(sourceUrl);
+        addSourceSitemap(sourceUrl);
     }
 
-    let addSource = async(sourceUrl=sourceUrl) => {
+    let addSourceRNVC = async () => {
+        await addSourceJsonContent(rnvcembeddings);
+    }
+
+    let addSourceJsonContent = async (data) => {
+        setDocsLoadingState("loading");
+        setIsLoadingSources(true);
+
+        console.log("Received data: ", data);
+
+        let embeddingVectors = [];
+
+        for(var i = 0; i < data.length; i++){
+            embeddingVectors.push(data[i].embeddings)
+        }
+
+        setSources([...sources, ...data]);
+
+        let tempVectorStore = vectorStore;
+        if(!vectorStore){
+            tempVectorStore = await MemoryVectorStore.fromDocuments([], new FakeEmbeddings());
+        }
+
+        console.log("Adding documents to the MemoryVectorStore:")
+        tempVectorStore.addVectors(embeddingVectors, data);
+
+        console.log("Set vectorstore from JSON object: ", tempVectorStore);
+        setVectorStore(tempVectorStore);
+        setDocsLoadingState("loaded");
+        setIsLoadingSources(false);
+    }
+
+    let addSourceJson = async (jsonUrl) => {
+        setDocsLoadingState("loading");
+        setIsLoadingSources(true);
+
+        let res = await fetch(jsonUrl, {
+            method: "POST",
+            body: JSON.stringify({
+
+            })
+        });
+
+        if(!res.ok) {
+            console.log("There was an error loading the document");
+            notifications.show({
+                title: "There was an error loading from the JSON file."
+            })
+        }
+        
+        const data = await res.json();
+        await addSourceJsonContent(data);
+    }
+
+    let addSourceSitemap = async(sourceUrl=sourceUrl) => {
 
         setDocsLoadingState("loading");
         setIsLoadingSources(true);
@@ -159,10 +221,11 @@ export default function RepoChat(){
                 newSource["content"] = undefined;
                 newSource["embeddings"] = undefined;
     
-                let document = new Document({
+                let document = {
                     pageContent: content,
-                    metadata: newSource
-                })
+                    metadata: newSource,
+                    embeddings: embeddingsVector
+                };
     
                 embeddingsVectors.push(embeddingsVector);
                 documents.push(document);
@@ -174,7 +237,7 @@ export default function RepoChat(){
 
         console.log("Documents: ", documents);
 
-        setSources(documents);
+        setSources([...sources, ...documents]);
 
         let tempVectorStore = vectorStore;
         if(!vectorStore){
@@ -187,6 +250,16 @@ export default function RepoChat(){
         setDocsLoadingState("loaded");
         setIsLoadingSources(false);
     }
+
+    const downloadFile = ({ data, fileName, fileType }) => {
+        const blob = new Blob([data], { type: fileType });
+        const a = document.createElement('a');
+        a.download = fileName;
+        a.href = window.URL.createObjectURL(blob);
+        const clickEvt = new MouseEvent('click', { view: window, bubbles: true, cancelable: true });
+        a.dispatchEvent(clickEvt);
+        a.remove();
+    };  
 
 
     let sendMessage = async () => {
@@ -269,10 +342,18 @@ export default function RepoChat(){
                 </Card>
 
                 <Card shadow="sm" m="lg" >
-                    <Text size="md">Add the sitemap for the website you want to load. </Text>
+                    <Text size="md">Add the sitemap or the embedded JSON file for the website you want to load. </Text>
                     <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="Example: https://nextjs.org/sitemap.xml"></TextInput>
                     <Textarea value={filterUrls} onChange={(e) => setFilterURLs(e.target.value)} placeholder="Filter for specific subdirectories, separated by commas: https://nextjs.org/docs/"></Textarea>
                     <Button mt="sm" onClick={() => addSourceUser()}>Add</Button>
+                    <Button mt="sm" ml="sm" onClick={() => addSourceRNVC()}>Add react-native-vision-camera</Button>
+                    {sources.length > 0 && <Button mt="sm" ml="sm" onClick={() => downloadFile({
+                        data: JSON.stringify(sources),
+                        fileName: "embedded_website.json",
+                        fileType: "application/json"
+                    })}>
+                        Download File
+                    </Button>}
                     {sources.map((item, index) => (
                         <Text>Document <i>{item.metadata["link"]}</i> added</Text>
                     ))}

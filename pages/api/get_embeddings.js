@@ -5,6 +5,8 @@ let embeddingsModel = new OpenAIEmbeddings();
 // export const runtime = 'edge';
 
 export default async function POST(req, res) {
+    console.log("Request to get_embeddings: ", req.body);
+
     let body = JSON.parse(req.body)
     let strings = body["strings"];
     let isSingle = body["single"];
