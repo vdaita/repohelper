@@ -418,7 +418,11 @@ export default function RepoChat(){
                     <Button mx="sm" onClick={() => sendMessage()} size="lg" style={{alignSelf: 'flex-end'}} radius='md' disabled={isLoading || isLoadingSources}>Send</Button>
                 </Box>
                 
-
+                <Box p="sm" gap="md" justify="flex-start" align="flex-start">
+                    <Text m="sm" size="xs">
+                        See more work at <a href="https://longlaketech.com">LongLake</a>
+                    </Text>
+                </Box>
             </Container>  
         </>
     );
