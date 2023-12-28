@@ -277,7 +277,7 @@ export default function RepoChat(){
 
             messageInput.current.value = "";
             
-            const documents = await vectorStore.similaritySearch(localMessages.at(-1).content, 2); // get the top 4 articles
+            const documents = await vectorStore.similaritySearch(localMessages.at(-1).content, 7); // get the top 4 articles
         
             console.log("Retrieved documents: ", documents);
 
