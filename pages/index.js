@@ -40,11 +40,12 @@ export default function RepoChat(){
     const [shouldJump, setShouldJump] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
     const [vectorStore, setVectorStore] = useState();
+    const [showSystemMessages, setShouldShowSystemMessage] = useState(false);
 
     useEffect(() => {
     }, []);
 
-    const {messages, setMessages, append, isLoading: chatLoading} = useChat({
+    const {messages, setMessages, append, reload, isLoading: chatLoading} = useChat({
         api: "/api/chat_llm",
         onError: (err) => {
             console.error(err);
@@ -272,13 +273,12 @@ export default function RepoChat(){
 
             setIsLoading(true);
 
-            let localMessages = [...messages, {role: 'user', content: messageInput.current.value}];
-            setMessages(localMessages);
+            let localMessages = [...messages];
 
+            const question = messageInput.current.value;
+            const documents = await vectorStore.similaritySearch(question, 7); 
             messageInput.current.value = "";
-            
-            const documents = await vectorStore.similaritySearch(localMessages.at(-1).content, 7); // get the top 4 articles
-        
+
             console.log("Retrieved documents: ", documents);
 
             let sourcesString;
@@ -286,19 +286,31 @@ export default function RepoChat(){
                 sourcesString = "### Provided documentation \n";
                 for(var i = 0; i < documents.length; i++){
                     let metadata = documents[i].metadata;
-                    sourcesString += `\n <details> 
+
+
+                    const detailsSummary = `\n <details> 
                         <summary>
                             <a href="${metadata['link']}">${metadata['title'] ? metadata['title'] : metadata['link']}</a>
                         </summary>
                         ${documents[i].pageContent}
-                    </details>\n`
+                    </details>\n`;
+                    localMessages.push({
+                        role: "system",
+                        content: detailsSummary
+                    });
+
+                    console.log("Added a document ", i);
                 }
             } else {
                 sourcesString = "No available sources.";
             }
 
+            localMessages.push({role: 'user', content: question});
+
             // localMessages.push({role: 'system', content: sourcesString});
-            append({role: 'system', content: sourcesString});
+            setMessages(localMessages);
+            reload();    
+        
             setIsLoading(false);
         } catch (err) {
             console.error(err);
@@ -359,7 +371,7 @@ export default function RepoChat(){
                     ))}
                     <div>
                         <Text>{docsLoadingState === "unloaded" || sources.length === 0 ? "No documents have been loaded." : ""}</Text>
-                        <Text>{docsLoadingState === "loaded" ? "Finished loading." : ""}</Text>
+                        <Text>{docsLoadingState === "loaded" && sources.length > 0 ? "Finished loading." : ""}</Text>
                         <Text>{docsLoadingState === "loading" ? "Your documents are loading." : ""}</Text>
                         <Text>{docsLoadingState === "error" ? "There was an error loading your documents. " : ""}</Text>
                         <Text>{docsLoadingState[0] === docsLoadingState[0].toUpperCase() ? docsLoadingState : ""}</Text>
@@ -368,43 +380,48 @@ export default function RepoChat(){
 
                 </Card>
 
+
                 <Box mt="md">
-                    {messages.length == 0 ? 'Your messages will show here' : ''}
+                    <Button onClick={() => setShouldShowSystemMessage(!showSystemMessages)}>{showSystemMessages ? "Hide" : "Show"} sources messages.</Button> <br/>
+                    {sources.length == 0 ? "Please load your sources.\n" : ""} <br/>
+                    {messages.length == 0 ? 'Your messages will show here.' : ''}
                     {messages.map((item, index) => (
-                        <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
-                            <Badge variant="gradient" gradient={genGradient(item.role)}> 
-                                <Text weight={500}>
-                                    {item.role}
-                                </Text>
-                            </Badge>
-                            <ReactMarkdown
-                                m="sm"
-                                rehypePlugins={[rehypeRaw]}
-                                children={item.content}
-                                components={{
-                                code({node, inline, className, children, ...props}) {
-                                    const match = /language-(\w+)/.exec(className || '')
-                                    return !inline && match ? (
-                                    <SyntaxHighlighter
-                                        {...props}
-                                        children={String(children).replace(/\n$/, '')}
-                                        style={atomDark}
-                                        language={match[1]}
-                                        PreTag="div"
-                                    />
-                                    ) : (
-                                    <code {...props} className={className}>
-                                        {children}
-                                    </code>
-                                    )
-                                }
-                                }}
-                            />
-                            {(!isLoading && !isLoadingSources) && <Button color="red" size="xs" onClick={() => deleteMessage(index)}>Delete message</Button>}
-                        </Card>
+                        <>
+                            {(showSystemMessages || item.role != "system") && <Card key={index} shadow="sm" m="md" padding="lg" radius="md" withBorder>
+                                <Badge variant="gradient" gradient={genGradient(item.role)}> 
+                                    <Text weight={500}>
+                                        {item.role}
+                                    </Text>
+                                </Badge>
+                                <ReactMarkdown
+                                    m="sm"
+                                    rehypePlugins={[rehypeRaw]}
+                                    children={item.content}
+                                    components={{
+                                    code({node, inline, className, children, ...props}) {
+                                        const match = /language-(\w+)/.exec(className || '')
+                                        return !inline && match ? (
+                                        <SyntaxHighlighter
+                                            {...props}
+                                            children={String(children).replace(/\n$/, '')}
+                                            style={atomDark}
+                                            language={match[1]}
+                                            PreTag="div"
+                                        />
+                                        ) : (
+                                        <code {...props} className={className}>
+                                            {children}
+                                        </code>
+                                        )
+                                    }
+                                    }}
+                                />
+                                {(!isLoading && !isLoadingSources) && <Button color="red" size="xs" onClick={() => deleteMessage(index)}>Delete message</Button>}
+                            </Card>}
+                        </>
                     ))}
                     {error && <Alert withCloseButton closeButtonLabel="Close alert" onClose={() => setError(false)} icon={<IconAlertCircle size="1rem"/>} title="Error" color="red">
-                        There was an error loading your response.
+                        There was an error loading your response. {sources.length == 0 ? "It is probably because your sources are unloaded." : ""}
                     </Alert>}
                     {(isLoadingSources || isLoading) && <Loader m="sm"/>}
 
