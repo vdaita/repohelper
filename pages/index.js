@@ -17,7 +17,7 @@ import BackendEmbeddings from './../utils/BackendEmbeddings';
 import { FakeEmbeddings } from "langchain/embeddings/fake";
 import rehypeRaw from 'rehype-raw'; // TODO: Find a way to sanitize the responses from the request or write custom to deal with details-summary
 import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
-
+import { Analytics } from '@vercel/analytics/react';
 import rnvcembeddings from "./../utils/react-native-vector-camera-embeddings.json";
 
 export default function RepoChat(){
@@ -348,6 +348,7 @@ export default function RepoChat(){
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2}} className={styles.container}>
+                <Analytics mode={'production'} />;
                 <Card shadow="sm" style={{position: 'sticky', top: 0, background: 'white', zIndex: 100}}>
                     <Text size="lg" className={styles.container}>Chat with documentation</Text>
                     <Text size="xs">alpha</Text>
