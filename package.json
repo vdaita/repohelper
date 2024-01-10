@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
+    "@extractus/article-extractor": "^8.0.4",
     "@huggingface/agents": "^0.0.5",
     "@huggingface/hub": "^0.8.4",
     "@huggingface/inference": "^1.5.1",
@@ -23,6 +24,7 @@
     "@types/node": "20.4.6",
     "@types/react": "18.2.18",
     "@types/react-dom": "18.2.7",
+    "@vercel/analytics": "^1.1.1",
     "@xenova/transformers": "^2.11.0",
     "ai": "^2.1.31",
     "axios": "^1.5.0",
@@ -46,11 +48,13 @@
     "rehype-raw": "^7.0.0",
     "sanitize-html": "^2.11.0",
     "ttf-loader": "^1.0.2",
+    "turndown": "^7.1.2",
     "typescript": "5.1.6"
   },
   "devDependencies": {
     "@types/html-to-text": "^9.0.2",
     "@types/jsdom": "^21.1.3",
-    "@types/phantom": "^3.2.6"
+    "@types/phantom": "^3.2.6",
+    "@types/turndown": "^5.0.4"
   }
 }

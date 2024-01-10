@@ -1,8 +1,6 @@
-import parseFromHtml from '../../utils/article-extractor/utils/parseFromHtml.js';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { Document } from 'langchain/document';
-import { NodeHtmlMarkdown } from "node-html-markdown";
 import { convert } from 'html-to-text';
 
 let embeddingsModel = new OpenAIEmbeddings({
@@ -27,6 +25,7 @@ const encoder = new TextEncoder();
 
 async function getSourceGoogle(search_query: string) {
     console.log("get_sources: ", search_query);
+    return ["https://nextjs.org/docs", "https//nextjs.org/docs/pages"]
 
     let data = JSON.stringify({
         "q": "site:" + search_query,
@@ -45,8 +44,10 @@ async function getSourceGoogle(search_query: string) {
 
     let searchResults: any = await serperResult.json();
 
+    console.log(JSON.stringify(searchResults).substring(0, 200))
+
     let links = [];
-    for(var i = 0; i < searchResults["organic"]; i++){
+    for(var i = 0; i < searchResults["organic"].length; i++){
         links.push(searchResults["organic"][i]["link"]);
     }
 
@@ -99,17 +100,25 @@ async function getSite(url: string) {
         method: 'GET',
     })
     let contentString = await htmlContent.text();
-    
-    // console.log("HTML Content: ", contentString.substring(0, 100));
-    let data;
-    // try {
-    data = await parseFromHtml(contentString, url);
-    // console.log(data);
+    console.log(contentString.substring(0, 200));
 
-    let markdownContent = NodeHtmlMarkdown.translate(data!["content"]);
-    data!["content"] = markdownContent;
-    // console.log(markdownContent);
-    return data!;
+    let textified = await fetch("/extract_text", {
+        method: "POST",
+        body: JSON.stringify({
+            "content": contentString
+        })
+    });
+    let textifiedResult = await textified.json();
+
+    contentString = textifiedResult;
+
+    console.log(contentString)
+    return {
+        url: url,
+        link: url,
+        content: contentString,
+        title: url
+    };
 }
 
 async function getEmbeddings(content: string){
@@ -164,16 +173,19 @@ export const runtime = 'edge';
 export default async function POST(req: Request){
     let body = await req.json();
 
-    let filteredUrls = body["filter_urls"].split(",");
-    let refilteredUrls = [];
-    for(var i = 0; i < filteredUrls.length; i++){
-        let currUrl = filteredUrls[i].trim();
-        if(currUrl > 0){
-            refilteredUrls.push(currUrl);
-        }
-    }
+    const sites = await getSourceGoogle(body["site_url"]);
+    console.log("Got websites: ", sites)
 
-    const sites = await getSourceSitemap(body["sitemap_url"], filteredUrls);
+    // let filteredUrls = body["filter_urls"].split(",");
+    // let refilteredUrls = [];
+    // for(var i = 0; i < filteredUrls.length; i++){
+    //     let currUrl = filteredUrls[i].trim();
+    //     if(currUrl > 0){
+    //         refilteredUrls.push(currUrl);
+    //     }
+    // }
+
+    // const sites = await getSourceSitemap(body["sitemap_url"], filteredUrls);
     // console.log("Got sitemaps: ", sites);
 
     if("error" in sites){

@@ -164,8 +164,9 @@ export default function RepoChat(){
         let res = await fetch("/api/stream_source", {
             method: "POST",
             body: JSON.stringify({
-                sitemap_url: sourceUrl,
-                filter_urls: filterUrls
+                site_url: sourceUrl
+                // sitemap_url: sourceUrl,
+                // filter_urls: filterUrls
             })
         });
 
@@ -355,18 +356,19 @@ export default function RepoChat(){
                 </Card>
 
                 <Card shadow="sm" m="lg" >
-                    <Text size="md">Add the sitemap or the embedded JSON file for the website you want to load. </Text>
-                    <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="Example: https://nextjs.org/sitemap.xml"></TextInput>
-                    <Textarea value={filterUrls} onChange={(e) => setFilterURLs(e.target.value)} placeholder="Filter for specific subdirectories, separated by commas: https://nextjs.org/docs/"></Textarea>
-                    <Button mt="sm" onClick={() => addSourceUser()}>Add</Button>
-                    <Button mt="sm" ml="sm" onClick={() => addSourceRNVC()}>Add react-native-vision-camera</Button>
-                    {sources.length > 0 && <Button mt="sm" ml="sm" onClick={() => downloadFile({
+                    Dynamic website loading will be back soon! <br/>
+                    {/* <Text size="md">Add the url (we load up to 20 of the top pages under that URL) or the embedded JSON file for the website you want to load. </Text>
+                    <TextInput value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="Example: https://nextjs.org/docs"></TextInput> */}
+                    {/* <Textarea value={filterUrls} onChange={(e) => setFilterURLs(e.target.value)} placeholder="Filter for specific subdirectories, separated by commas: https://nextjs.org/docs/"></Textarea> */}
+                    {/* <Button mt="sm" mr="sm" onClick={() => addSourceUser()}>Add</Button> */}
+                    <Button mt="sm" onClick={() => addSourceRNVC()}>Add react-native-vision-camera docs</Button>
+                    {/* {sources.length > 0 && <Button mt="sm" ml="sm" onClick={() => downloadFile({
                         data: JSON.stringify(sources),
                         fileName: "embedded_website.json",
                         fileType: "application/json"
                     })}>
                         Download File
-                    </Button>}
+                    </Button>} */}
                     {sources.map((item, index) => (
                         <Text>Document <i>{item.metadata["link"]}</i> added</Text>
                     ))}
