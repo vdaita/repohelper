@@ -349,7 +349,7 @@ export default function RepoChat(){
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <Container py='lg' px='md' styles={{ borderColor: 'black', borderWidth: 2}} className={styles.container}>
-                <Analytics mode={'production'} />;
+                <Analytics mode={'production'} />
                 <Card shadow="sm" style={{position: 'sticky', top: 0, background: 'white', zIndex: 100}}>
                     <Text size="lg" className={styles.container}>Chat with documentation</Text>
                     <Text size="xs">alpha</Text>
